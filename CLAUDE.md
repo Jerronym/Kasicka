@@ -70,3 +70,6 @@ recurring: {
   - [x] Skryt hlavni datum v recurring rezimu
   - [x] Pridat hint "vzdy k X. dni v mesici" / "vzdy k poslednimu dni v mesici"
   - [x] Pridat `dayOfMonth` pole + opravit `advanceDate` pro konce mesicu
+  - [x] Opravit bug: otevreni modalniho okna "nova klasicka transakce" po predchozim otevreni "nova opakovana transakce" nespravne zobrazovalo modal opakovane transakce
+    - Pricina: `recurringMode` zustavalo `true` jako globalni stav
+    - Reseni: `openTxnModal(idx, recurring=false)` — novy parametr explicitne predava stav; `openRecurringTxnModal()` vola `openTxnModal(-1, true)`

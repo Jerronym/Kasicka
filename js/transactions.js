@@ -1,8 +1,9 @@
 // Kasička — transakce, převody, štítky
 
-function openTxnModal(idx){
+function openTxnModal(idx, recurring=false){
   editingTxn=idx;
-  if(idx!==-1) recurringMode=!!transactions[idx]?.recurring;
+  if(idx===-1) recurringMode=recurring;
+  else recurringMode=!!transactions[idx]?.recurring;
   const del=document.getElementById('txn-delete-btn');
   if(idx===-1){
     document.getElementById('txn-modal-title').textContent=recurringMode?'Nová opakující se transakce':'Nová transakce';
@@ -742,8 +743,7 @@ function updateRecurringHint(){
 }
 
 function openRecurringTxnModal(){
-  recurringMode=true;
-  openTxnModal(-1);
+  openTxnModal(-1, true);
 }
 
 function processRecurringTxns(){
