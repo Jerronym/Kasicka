@@ -162,16 +162,16 @@
         <button class="btn btn-outline" onclick="openRecurringTxnModal()">🔁 Opakující</button>
       </div>
     </div>
-    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <div style="display:flex;justify-content:center;gap:24px;flex-wrap:wrap;">
       <!-- Levý sloupec: typ filtr + účet/kategorie -->
-      <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:center;">
         <div class="tabs" id="txn-filter">
           <button class="tab active" onclick="filterTxn('vse',event)">Vše</button>
           <button class="tab" onclick="filterTxn('prijem',event)">Příjmy</button>
           <button class="tab" onclick="filterTxn('vydaj',event)">Výdaje</button>
           <button class="tab" onclick="filterTxn('prevod',event)">Převody</button>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center;">
           <select id="filter-account" onchange="resetTxnPaging();renderTxns()" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:20px;padding:5px 11px;color:var(--text-secondary);font-size:12px;cursor:pointer;">
             <option value="">Všechny účty</option>
           </select>
@@ -181,7 +181,7 @@
         </div>
       </div>
       <!-- Pravý sloupec: časový filtr -->
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
         <div class="period-bar" id="txn-period-bar" style="gap:4px;">
           <button class="period-btn" onclick="setPeriod('dnes',event)">Dnes</button>
           <button class="period-btn" onclick="setPeriod('tyden',event)">Týden</button>
