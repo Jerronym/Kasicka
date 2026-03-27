@@ -162,39 +162,45 @@
         <button class="btn btn-outline" onclick="openRecurringTxnModal()">🔁 Opakující</button>
       </div>
     </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-      <div class="tabs" id="txn-filter">
-        <button class="tab active" onclick="filterTxn('vse',event)">Vše</button>
-        <button class="tab" onclick="filterTxn('prijem',event)">Příjmy</button>
-        <button class="tab" onclick="filterTxn('vydaj',event)">Výdaje</button>
-        <button class="tab" onclick="filterTxn('prevod',event)">Převody</button>
+    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <!-- Levý sloupec: typ filtr + účet/kategorie -->
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div class="tabs" id="txn-filter">
+          <button class="tab active" onclick="filterTxn('vse',event)">Vše</button>
+          <button class="tab" onclick="filterTxn('prijem',event)">Příjmy</button>
+          <button class="tab" onclick="filterTxn('vydaj',event)">Výdaje</button>
+          <button class="tab" onclick="filterTxn('prevod',event)">Převody</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <select id="filter-account" onchange="resetTxnPaging();renderTxns()" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:20px;padding:5px 11px;color:var(--text-secondary);font-size:12px;cursor:pointer;">
+            <option value="">Všechny účty</option>
+          </select>
+          <select id="filter-category" onchange="resetTxnPaging();renderTxns()" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:20px;padding:5px 11px;color:var(--text-secondary);font-size:12px;cursor:pointer;">
+            <option value="">Všechny kategorie</option>
+          </select>
+        </div>
       </div>
-      <div class="period-bar" id="txn-period-bar" style="gap:4px;">
-        <button class="period-btn" onclick="setPeriod('dnes',event)">Dnes</button>
-        <button class="period-btn" onclick="setPeriod('tyden',event)">Týden</button>
-        <button class="period-btn active" onclick="setPeriod('mesic',event)">Měsíc</button>
-        <button class="period-btn" onclick="setPeriod('rok',event)">Rok</button>
-        <button class="period-btn" onclick="setPeriod('vlastni',event)">Vlastní</button>
+      <!-- Pravý sloupec: časový filtr -->
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+        <div class="period-bar" id="txn-period-bar" style="gap:4px;">
+          <button class="period-btn" onclick="setPeriod('dnes',event)">Dnes</button>
+          <button class="period-btn" onclick="setPeriod('tyden',event)">Týden</button>
+          <button class="period-btn active" onclick="setPeriod('mesic',event)">Měsíc</button>
+          <button class="period-btn" onclick="setPeriod('rok',event)">Rok</button>
+          <button class="period-btn" onclick="setPeriod('vlastni',event)">Vlastní</button>
+        </div>
+        <div id="period-nav" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;">
+          <button class="btn-edit" onclick="shiftPeriod(-1)">‹</button>
+          <span id="period-nav-label" style="font-size:13px;font-weight:500;min-width:120px;text-align:center;color:var(--text-primary)"></span>
+          <button class="btn-edit" onclick="shiftPeriod(1)">›</button>
+        </div>
+        <div class="period-custom" id="period-custom-wrap">
+          <input type="date" id="period-from" onchange="applyCustomPeriod()">
+          <span style="font-size:12px;color:var(--text-secondary)">—</span>
+          <input type="date" id="period-to" onchange="applyCustomPeriod()">
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary);cursor:pointer;white-space:nowrap;"><input type="checkbox" id="txn-today" onchange="todayCheck('period-to',this,applyCustomPeriod)" style="cursor:pointer"> dnes</label>
+        </div>
       </div>
-    </div>
-    <div id="period-nav" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;">
-      <button class="btn-edit" onclick="shiftPeriod(-1)">‹</button>
-      <span id="period-nav-label" style="font-size:13px;font-weight:500;min-width:120px;text-align:center;color:var(--text-primary)"></span>
-      <button class="btn-edit" onclick="shiftPeriod(1)">›</button>
-    </div>
-    <div class="period-custom" id="period-custom-wrap">
-      <input type="date" id="period-from" onchange="applyCustomPeriod()">
-      <span style="font-size:12px;color:var(--text-secondary)">—</span>
-      <input type="date" id="period-to" onchange="applyCustomPeriod()">
-      <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary);cursor:pointer;white-space:nowrap;"><input type="checkbox" id="txn-today" onchange="todayCheck('period-to',this,applyCustomPeriod)" style="cursor:pointer"> dnes</label>
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-      <select id="filter-account" onchange="resetTxnPaging();renderTxns()" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:20px;padding:5px 11px;color:var(--text-secondary);font-size:12px;cursor:pointer;">
-        <option value="">Všechny účty</option>
-      </select>
-      <select id="filter-category" onchange="resetTxnPaging();renderTxns()" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:20px;padding:5px 11px;color:var(--text-secondary);font-size:12px;cursor:pointer;">
-        <option value="">Všechny kategorie</option>
-      </select>
     </div>
     <div id="period-summary" style="display:none;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px 16px;display:none;">
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;" id="period-summary-inner"></div>
