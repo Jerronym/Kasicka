@@ -1,0 +1,125 @@
+// Kasička — dashboard, graf celkových zůstatků
+
+function renderDashboard(){
+  updateDashNavLabel();
+  const range=getDashDateRange();
+
+  // Period label
+  const labelEl=document.getElementById('dash-month-label');
+  if(labelEl) labelEl.textContent=range
+    ? range.from.toLocaleDateString('cs-CZ',{day:'2-digit',month:'long',year:'numeric'})+
+      ' – '+range.to.toLocaleDateString('cs-CZ',{day:'2-digit',month:'long',year:'numeric'})
+    : '';
+
+  // Filter transactions by period
+  const periodTxns=range
+    ? transactions.filter(t=>{const d=new Date(t.date+'T12:00:00');return d>=range.from&&d<=range.to;})
+    : transactions;
+
+  const income=periodTxns.filter(t=>t.type==='prijem').reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
+  const expense=periodTxns.filter(t=>t.type==='vydaj').reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
+  const net=income-expense;
+
+  // Period label for cards
+  const periodShort=dashPeriod==='tyden'?'týden':dashPeriod==='mesic'?'měsíc':dashPeriod==='rok'?'rok':'období';
+  document.getElementById('dash-income-label').textContent=`Příjmy (${periodShort})`;
+  document.getElementById('dash-expense-label').textContent=`Výdaje (${periodShort})`;
+
+  const accTotal=accounts.reduce((s,a,i)=>s+(a.includeInTotal!==false?toCZK(getBalance(i),a.currency):0),0);
+  const invTotal=investments.reduce((s,inv,i)=>s+getInvValue(i),0);
+  document.getElementById('dash-total').textContent=fmt(accTotal+invTotal);
+  document.getElementById('dash-income').textContent=fmt(income);
+  document.getElementById('dash-expense').textContent=fmt(expense);
+  document.getElementById('dash-net').textContent=(net>=0?'+':'')+fmt(net);
+  document.getElementById('dash-net').style.color=net>=0?'var(--green)':'var(--red)';
+
+  // Recent transactions filtered by period (newest first, max 8)
+  const recentEl=document.getElementById('dash-recent-txn');
+  const txnTitle=document.getElementById('dash-txn-title');
+  const recent=[...periodTxns].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+  if(txnTitle) txnTitle.textContent=`Transakce (${periodShort})`;
+  if(!recent.length){
+    recentEl.innerHTML='<p style="padding:18px;color:var(--text-secondary);font-size:13px;">Žádné transakce v tomto období</p>';
+  } else {
+    recentEl.innerHTML='<table><tbody>'+recent.map(t=>{
+      const sign=t.type==='prijem'?'+':t.type==='prevod'?'⇄':'-';
+      const col=t.type==='prijem'?'var(--green)':t.type==='prevod'?'var(--text-secondary)':'var(--red)';
+      const accName=t.accIdx!==''&&accounts[t.accIdx]?accounts[t.accIdx].name:'';
+      return`<tr>
+        <td style="font-size:11.5px;padding:8px 14px;color:var(--text-secondary);white-space:nowrap">${t.date}</td>
+        <td style="font-size:12.5px;padding:8px 4px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.desc||t.cat)}</td>
+        <td style="text-align:right;padding:8px 14px;font-weight:500;color:${col};font-size:12.5px;white-space:nowrap">${sign} ${fmt(t.amount,t.cur)}</td>
+      </tr>`;
+    }).join('')+'</tbody></table>';
+  }
+
+  // Budget preview
+  const budEl=document.getElementById('dash-budget-preview');
+  if(!budgets.length){budEl.innerHTML='<p style="color:var(--text-secondary);font-size:13px;">Přidej kategorie v Rozpočtu</p>';}
+  else{
+    budEl.innerHTML=budgets.slice(0,4).map(b=>{
+      const spent=getBudgetSpentForRange(b, range);
+      const pct=b.limit?Math.min(spent/b.limit*100,100):0;
+      const over=b.limit>0&&spent>b.limit;
+      return`<div>
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px">
+          <span>${escHtml(b.name)}</span>
+          <span style="color:${over?'var(--red)':'var(--text-secondary)'}">${b.limit?pct.toFixed(0)+' %  ·  '+fmt(spent)+' z '+fmt(b.limit):fmt(spent)}</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${b.limit?pct:0}%;background:${over?'var(--red)':b.color}"></div></div>
+      </div>`;
+    }).join('');
+  }
+
+  renderBalanceChart();
+}
+
+// Spočítá výdaje pro rozpočet v daném rozsahu (pro Přehled)
+function getBudgetSpentForRange(b, range){
+  const matchTxn=t=>{
+    if(b.trackMode==='tags'){
+      const tags=b.trackTags&&b.trackTags.length?b.trackTags:[];
+      if(!tags.length) return false;
+      const txnTags=Array.isArray(t.tags)?t.tags:(t.tag?[t.tag]:[]);
+      return tags.some(tag=>txnTags.includes(tag));
+    } else {
+      const cats=b.cats&&b.cats.length?b.cats:[b.name];
+      return cats.includes(t.cat);
+    }
+  };
+  const net=b.flowMode==='net';
+  const list=transactions.filter(t=>{
+    if(!matchTxn(t)) return false;
+    if(t.type==='prevod') return false;
+    if(!net&&t.type!=='vydaj') return false;
+    if(range){const d=new Date(t.date+'T12:00:00');return d>=range.from&&d<=range.to;}
+    return true;
+  });
+  const out=list.filter(t=>t.type==='vydaj').reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
+  if(!net) return out;
+  const inc=list.filter(t=>t.type==='prijem').reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
+  return out-inc;
+}
+
+function renderBalanceChart(){
+  const ctx=document.getElementById('chartBalance');
+  if(!ctx) return;
+  if(chartBalance){chartBalance.destroy();chartBalance=null;}
+  const currentTotal=accounts.reduce((s,a,i)=>s+(a.includeInTotal!==false?toCZK(getBalance(i),a.currency):0),0)+investments.reduce((s,inv,i)=>s+getInvValue(i),0);
+  let history=buildBalanceHistory();
+  if(history.length<2){
+    const nowLbl=new Date().toLocaleDateString('cs-CZ',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    history=[{label:'Start',value:0},{label:nowLbl,date:today(),value:Math.round(currentTotal*100)/100}];
+  }
+  const todayStr=today();
+  if(history[history.length-1]?.date!==todayStr){
+    history=[...history,{label:new Date().toLocaleDateString('cs-CZ',{day:'2-digit',month:'2-digit',year:'2-digit'}),date:todayStr,value:Math.round(currentTotal*100)/100}];
+  }
+  // Filter by dash period
+  const range=getDashDateRange();
+  if(range){
+    const filtered=history.filter(h=>{const d=new Date((h.date||'2000-01-01')+'T12:00:00');return d>=range.from&&d<=range.to;});
+    if(filtered.length>=1) history=filtered;
+  }
+  chartBalance=new Chart(ctx,{type:'line',data:{labels:history.map(h=>h.label),datasets:[{label:'Majetek (Kč)',data:history.map(h=>h.value),borderColor:'#4f8ef7',backgroundColor:'rgba(79,142,247,0.08)',borderWidth:2,pointRadius:3,pointBackgroundColor:'#4f8ef7',fill:true,tension:0.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>v.raw.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' Kč'}}},scales:{x:{ticks:{color:'#8b92a8',font:{size:11},maxRotation:45,autoSkip:true},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8b92a8',font:{size:11},callback:v=>v.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})},grid:{color:'rgba(255,255,255,0.04)'}}}}});
+}

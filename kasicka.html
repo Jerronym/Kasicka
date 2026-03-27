@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Kasička — osobní finance</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐷</text></svg>">
+<meta name="apple-mobile-web-app-title" content="Kasička">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="toast-container" id="toast-container"></div>
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">🐷</div>
+    <div class="auth-title">Kasička</div>
+    <div class="auth-sub">Osobní finanční deník</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Přihlásit se</button>
+      <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Registrovat</button>
+    </div>
+    <div class="auth-error" id="auth-error"></div>
+    <div class="auth-success" id="auth-success"></div>
+    <div class="form-group"><label>Email</label><input type="email" id="auth-email" placeholder="vas@email.cz" autocomplete="email"></div>
+    <div class="form-group"><label>Heslo</label><input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')authSubmit()"></div>
+    <div id="auth-pass2-wrap" class="form-group" style="display:none;"><label>Heslo znovu</label><input type="password" id="auth-password2" placeholder="••••••••" autocomplete="new-password"></div>
+    <button class="btn" onclick="authSubmit()" id="auth-btn" style="width:100%;margin-top:8px;padding:11px;">Přihlásit se</button>
+    <div id="auth-forgot" style="text-align:center;margin-top:12px;">
+      <button onclick="authResetPassword()" style="background:none;border:none;color:var(--text-secondary);font-size:12px;cursor:pointer;">Zapomenuté heslo</button>
+    </div>
+  </div>
+</div>
+
+<div class="app" id="main-app" style="display:none;">
+<nav class="sidebar">
+  <div class="logo">Kasička</div>
+  <button class="nav-item active" onclick="showSection('dashboard')" id="nav-dashboard"><span class="nav-icon">◉</span><span class="nav-label">Přehled</span></button>
+  <button class="nav-item" onclick="showSection('transactions')" id="nav-transactions"><span class="nav-icon">⇄</span><span class="nav-label">Transakce</span></button>
+  <button class="nav-item" onclick="showSection('accounts')" id="nav-accounts"><span class="nav-icon">▣</span><span class="nav-label">Účty</span></button>
+  <button class="nav-item" onclick="showSection('investments')" id="nav-investments"><span class="nav-icon">▲</span><span class="nav-label">Investice</span></button>
+  <button class="nav-item" onclick="showSection('budget')" id="nav-budget"><span class="nav-icon">◎</span><span class="nav-label">Rozpočet</span></button>
+  <button class="nav-item" onclick="showSection('categories')" id="nav-categories"><span class="nav-icon">⊞</span><span class="nav-label">Kategorie</span></button>
+  <button class="nav-item" onclick="showSection('links')" id="nav-links"><span class="nav-icon">👥</span><span class="nav-label">Sdílení</span></button>
+  <div style="margin-top:auto;padding-top:16px;border-top:1px solid var(--card-border);display:flex;flex-direction:column;gap:4px;">
+    <button class="nav-item" onclick="exportData()" style="font-size:12px;"><span class="nav-icon" style="font-size:13px;">↑</span><span class="nav-label">Export JSON</span></button>
+    <label class="nav-item" style="font-size:12px;cursor:pointer;"><span class="nav-icon" style="font-size:13px;">↓</span><span class="nav-label">Import JSON</span><input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)"></label>
+    <button class="nav-item" onclick="saveToStorage()" style="font-size:12px;"><span class="nav-icon" style="font-size:13px;">💾</span><span class="nav-label">Uložit data</span></button>
+    <div id="save-indicator" style="font-size:11px;color:var(--green);padding:4px 10px;display:none;"><span class="nav-label">✓ Uloženo</span></div>
+    <div id="user-info" style="display:none;margin-top:4px;">
+      <span style="font-size:16px;">👤</span>
+      <span id="user-email" class="nav-label"></span>
+      <button onclick="authSignOut()" class="btn-edit" style="margin-left:auto;font-size:10px;" title="Odhlásit se">↩</button>
+    </div>
+  </div>
+</nav>
+<!-- Mobilní bottom navigation -->
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="bnav-item active" onclick="showSection('dashboard')" id="bnav-dashboard"><span class="bnav-icon">◉</span><span class="bnav-label">Přehled</span></button>
+  <button class="bnav-item" onclick="showSection('transactions')" id="bnav-transactions"><span class="bnav-icon">⇄</span><span class="bnav-label">Transakce</span></button>
+  <button class="bnav-item" onclick="showSection('accounts')" id="bnav-accounts"><span class="bnav-icon">▣</span><span class="bnav-label">Účty</span></button>
+  <button class="bnav-item" onclick="showSection('investments')" id="bnav-investments"><span class="bnav-icon">▲</span><span class="bnav-label">Investice</span></button>
+  <button class="bnav-item" onclick="showSection('budget')" id="bnav-budget"><span class="bnav-icon">◎</span><span class="bnav-label">Rozpočet</span></button>
+  <button class="bnav-item" onclick="toggleMobileMenu()" id="bnav-more"><span class="bnav-icon">⋯</span><span class="bnav-label">Více</span></button>
+</nav>
+<!-- Mobilní menu (Kategorie, Sdílení, Export, Import, Uložit, User) -->
+<div class="mobile-menu-overlay" id="mobile-menu" onclick="if(event.target===this)closeMobileMenu()">
+  <div class="mobile-menu">
+    <div class="mobile-menu-title">Více</div>
+    <button class="mobile-menu-item" onclick="closeMobileMenu();showSection('categories')"><span>⊞</span> Kategorie</button>
+    <button class="mobile-menu-item" onclick="closeMobileMenu();showSection('links')"><span>👥</span> Sdílení</button>
+    <div class="mobile-menu-divider"></div>
+    <button class="mobile-menu-item" onclick="closeMobileMenu();exportData()"><span>↑</span> Export JSON</button>
+    <label class="mobile-menu-item" style="cursor:pointer;"><span>↓</span> Import JSON<input type="file" accept=".json" style="display:none" onchange="closeMobileMenu();importData(event)"></label>
+    <button class="mobile-menu-item" onclick="closeMobileMenu();saveToStorage()"><span>💾</span> Uložit data</button>
+    <div class="mobile-menu-divider"></div>
+    <div class="mobile-menu-user" id="mobile-user-info" style="display:none;">
+      <span>👤</span> <span id="mobile-user-email"></span>
+      <button onclick="closeMobileMenu();authSignOut()" class="btn-sm btn-outline" style="margin-left:auto;">Odhlásit</button>
+    </div>
+  </div>
+</div>
+<main class="main">
+
+  <div class="section visible" id="section-dashboard">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div><div class="page-title">Přehled</div><div class="page-sub" id="dash-month-label"></div></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+        <div class="period-bar" style="gap:4px;">
+          <button class="period-btn" id="dash-p-week" onclick="setDashPeriod('tyden',this)">Týden</button>
+          <button class="period-btn active" id="dash-p-month" onclick="setDashPeriod('mesic',this)">Měsíc</button>
+          <button class="period-btn" id="dash-p-year" onclick="setDashPeriod('rok',this)">Rok</button>
+          <button class="period-btn" id="dash-p-custom" onclick="setDashPeriod('vlastni',this)">Vlastní</button>
+        </div>
+        <div id="dash-period-nav" style="display:flex;align-items:center;gap:8px;">
+          <button class="btn-edit" onclick="shiftDashPeriod(-1)">‹</button>
+          <span id="dash-period-nav-label" style="font-size:12.5px;font-weight:500;min-width:120px;text-align:center;color:var(--text-primary)"></span>
+          <button class="btn-edit" onclick="shiftDashPeriod(1)">›</button>
+        </div>
+        <div class="period-custom" id="dash-custom-wrap">
+          <input type="date" id="dash-from" onchange="renderDashboard()">
+          <span style="font-size:12px;color:var(--text-secondary)">—</span>
+          <input type="date" id="dash-to" onchange="renderDashboard()">
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary);cursor:pointer;white-space:nowrap;"><input type="checkbox" id="dash-today" onchange="todayCheck('dash-to',this,renderDashboard)" style="cursor:pointer"> dnes</label>
+        </div>
+      </div>
+    </div>
+    <div class="cards-row">
+      <div class="card"><div class="card-label">Celkový majetek</div><div class="card-value neu" id="dash-total">0 Kč</div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">vč. investic</div></div>
+      <div class="card"><div class="card-label" id="dash-income-label">Příjmy</div><div class="card-value pos" id="dash-income">0 Kč</div></div>
+      <div class="card"><div class="card-label" id="dash-expense-label">Výdaje</div><div class="card-value neg" id="dash-expense">0 Kč</div></div>
+      <div class="card"><div class="card-label">Čistý tok</div><div class="card-value" id="dash-net">0 Kč</div></div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-wrap-title">
+        <span>Vývoj celkových zůstatků</span>
+      </div>
+      <div style="position:relative;width:100%;height:190px;"><canvas id="chartBalance"></canvas></div>
+    </div>
+    <div class="two-col">
+      <div class="table-card">
+        <div class="table-header"><span class="table-title" id="dash-txn-title">Transakce</span><button class="btn btn-sm btn-outline" onclick="showSection('transactions')">Zobrazit vše</button></div>
+        <div id="dash-recent-txn"><p style="padding:18px;color:var(--text-secondary);font-size:13px;">Žádné transakce</p></div>
+      </div>
+      <div class="table-card">
+        <div class="table-header"><span class="table-title">Rozpočet — přehled</span></div>
+        <div id="dash-budget-preview" style="padding:14px 18px;display:flex;flex-direction:column;gap:12px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="section-transactions">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div class="page-title">Transakce</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="openTxnModal(-1)">+ Transakce</button>
+        <button class="btn btn-outline" onclick="openRecurringTxnModal()">🔁 Opakující</button>
+      </div>
+    </div>
+    <div class="tabs" id="txn-filter">
+      <button class="tab active" onclick="filterTxn('vse',event)">Vše</button>
+      <button class="tab" onclick="filterTxn('prijem',event)">Příjmy</button>
+      <button class="tab" onclick="filterTxn('vydaj',event)">Výdaje</button>
+      <button class="tab" onclick="filterTxn('prevod',event)">Převody</button>
+    </div>
+    <div class="period-bar" id="txn-period-bar" style="gap:4px;">
+      <button class="period-btn" onclick="setPeriod('dnes',event)">Dnes</button>
+      <button class="period-btn" onclick="setPeriod('tyden',event)">Týden</button>
+      <button class="period-btn active" onclick="setPeriod('mesic',event)">Měsíc</button>
+      <button class="period-btn" onclick="setPeriod('rok',event)">Rok</button>
+      <button class="period-btn" onclick="setPeriod('vlastni',event)">Vlastní</button>
+    </div>
+    <div id="period-nav" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;">
+      <button class="btn-edit" onclick="shiftPeriod(-1)">‹</button>
+      <span id="period-nav-label" style="font-size:13px;font-weight:500;min-width:120px;text-align:center;color:var(--text-primary)"></span>
+      <button class="btn-edit" onclick="shiftPeriod(1)">›</button>
+    </div>
+    <div class="period-custom" id="period-custom-wrap">
+      <input type="date" id="period-from" onchange="applyCustomPeriod()">
+      <span style="font-size:12px;color:var(--text-secondary)">—</span>
+      <input type="date" id="period-to" onchange="applyCustomPeriod()">
+      <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary);cursor:pointer;white-space:nowrap;"><input type="checkbox" id="txn-today" onchange="todayCheck('period-to',this,applyCustomPeriod)" style="cursor:pointer"> dnes</label>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <select id="filter-account" onchange="resetTxnPaging();renderTxns()" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:20px;padding:5px 11px;color:var(--text-secondary);font-size:12px;cursor:pointer;">
+        <option value="">Všechny účty</option>
+      </select>
+      <select id="filter-category" onchange="resetTxnPaging();renderTxns()" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:20px;padding:5px 11px;color:var(--text-secondary);font-size:12px;cursor:pointer;">
+        <option value="">Všechny kategorie</option>
+      </select>
+    </div>
+    <div id="period-summary" style="display:none;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px 16px;display:none;">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;" id="period-summary-inner"></div>
+    </div>
+    <div id="tag-filter-bar" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:28px;">
+      <span style="font-size:12px;color:var(--text-secondary);">Štítky:</span>
+      <span id="tag-filter-chips"></span>
+    </div>
+    <div id="tag-stats-panel" style="display:none;" class="tag-stats-card">
+      <div style="font-size:13px;font-weight:500;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
+        <span id="tag-stats-title">Přehled štítku</span>
+        <button class="btn-edit" onclick="clearTagFilter()">✕ Zrušit filtr</button>
+      </div>
+      <div id="tag-stats-content"></div>
+    </div>
+    <div class="table-card txn-desktop">
+      <table><thead><tr><th>Datum</th><th>Popis</th><th>Štítek</th><th>Kategorie</th><th>Účet</th><th style="text-align:right">Částka</th><th></th></tr></thead>
+      <tbody id="txn-tbody"></tbody></table>
+      <div id="txn-empty" style="padding:24px;text-align:center;color:var(--text-secondary);font-size:13px;">Zatím žádné transakce. Přidej první!</div>
+    </div>
+    <div class="txn-mobile" id="txn-mobile-list"></div>
+    <div id="txn-empty-mobile" style="display:none;padding:24px;text-align:center;color:var(--text-secondary);font-size:13px;">Zatím žádné transakce. Přidej první!</div>
+
+  </div>
+
+  <div class="section" id="section-accounts">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div class="page-title">Účty</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-outline" id="btn-transfer-main" onclick="openTransferModal()" style="border-color:rgba(52,211,153,0.4);color:var(--green);">⇄ Převod</button>
+        <button class="btn" onclick="openAccModal(-1)">+ Přidat účet</button>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-wrap-title" style="flex-wrap:wrap;gap:8px;">
+        <span>Vývoj zůstatků (v Kč)</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          <div class="period-bar" style="gap:4px;">
+            <button class="period-btn" id="acc-p-week" onclick="setAccPeriod('tyden',this)">Týden</button>
+            <button class="period-btn active" id="acc-p-month" onclick="setAccPeriod('mesic',this)">Měsíc</button>
+            <button class="period-btn" id="acc-p-year" onclick="setAccPeriod('rok',this)">Rok</button>
+            <button class="period-btn" id="acc-p-custom" onclick="setAccPeriod('vlastni',this)">Vlastní</button>
+          </div>
+          <div id="acc-period-nav" style="display:none;align-items:center;gap:8px;">
+            <button class="btn-edit" onclick="shiftChartPeriod('acc',-1)">‹</button>
+            <span id="acc-period-nav-label" style="font-size:12.5px;font-weight:500;min-width:110px;text-align:center;color:var(--text-primary)"></span>
+            <button class="btn-edit" onclick="shiftChartPeriod('acc',1)">›</button>
+          </div>
+          <div class="period-custom" id="acc-custom-wrap">
+            <input type="date" id="acc-from" onchange="renderAccChart()">
+            <span style="font-size:12px;color:var(--text-secondary)">—</span>
+            <input type="date" id="acc-to" onchange="renderAccChart()">
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary);cursor:pointer;white-space:nowrap;"><input type="checkbox" id="acc-today" onchange="todayCheck('acc-to',this,renderAccChart)" style="cursor:pointer"> dnes</label>
+          </div>
+        </div>
+      </div>
+      <div id="acc-chart-filter" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
+      <div style="position:relative;width:100%;height:190px;"><canvas id="chartAccounts"></canvas></div>
+    </div>
+    <div id="accounts-list" style="display:flex;flex-direction:column;gap:12px;"></div>
+    <div id="accounts-empty" style="padding:24px;text-align:center;color:var(--text-secondary);font-size:13px;">Zatím žádné účty. Přidej první!</div>
+  </div>
+
+  <div class="section" id="section-investments">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div class="page-title">Investice</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-outline" onclick="openInvGroupModal(-1)" style="border-color:rgba(167,139,250,0.4);color:var(--purple);">⊞ Přidat skupinu</button>
+        <button class="btn btn-outline" onclick="openInvestFromAcc()" style="border-color:rgba(52,211,153,0.4);color:var(--green);">↓ Investovat z účtu</button>
+        <button class="btn btn-outline" id="btn-auto-update" onclick="autoUpdatePrices()" style="border-color:rgba(79,142,247,0.4);color:var(--accent);">⟳ Aktualizovat ceny</button>
+        <button class="btn btn-outline" onclick="openInvUpdateModal()" style="border-color:rgba(251,191,36,0.4);color:var(--amber);">↻ Zadat ručně</button>
+        <button class="btn btn-outline" onclick="resetInvestments()" style="border-color:rgba(248,113,113,0.4);color:var(--red);">⚠ Smazat vše</button>
+        <button class="btn" onclick="openInvModal(-1)">+ Přidat investici</button>
+      </div>
+    </div>
+    <div class="cards-row">
+      <div class="card"><div class="card-label">Celkem investováno</div><div class="card-value neu" id="inv-total">0 Kč</div></div>
+      <div class="card"><div class="card-label">Aktuální hodnota</div><div class="card-value" id="inv-current">0 Kč</div></div>
+      <div class="card"><div class="card-label">Zisk / ztráta</div><div class="card-value" id="inv-pnl">0 Kč</div></div>
+      <div class="card"><div class="card-label">Výnos</div><div class="card-value" id="inv-pct">0 %</div></div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-wrap-title" style="flex-wrap:wrap;gap:8px;">
+        <span>Vývoj portfolia</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-secondary);"><span style="width:10px;height:10px;border-radius:2px;background:#4f8ef7;display:inline-block"></span>Investováno</span>
+            <span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-secondary);"><span style="width:10px;height:10px;border-radius:2px;background:#34d399;display:inline-block"></span>Hodnota</span>
+            <span id="inv-inflation-legend" style="display:none;align-items:center;gap:5px;font-size:12px;color:var(--text-secondary);"><span style="width:18px;height:2px;background:#f87171;display:inline-block;border-top:2px dashed #f87171;margin-top:4px;"></span>Min. hodnota pro pokrytí inflace</span>
+            <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-secondary);cursor:pointer;">
+              <input type="checkbox" id="inv-show-inflation" onchange="renderInvChart()" style="width:13px;height:13px;">
+              Zobrazit inflaci
+            </label>
+          </div>
+          <div class="period-bar" style="gap:4px;">
+            <button class="period-btn" id="inv-p-week" onclick="setInvPeriod('tyden',this)">Týden</button>
+            <button class="period-btn active" id="inv-p-month" onclick="setInvPeriod('mesic',this)">Měsíc</button>
+            <button class="period-btn" id="inv-p-year" onclick="setInvPeriod('rok',this)">Rok</button>
+            <button class="period-btn" id="inv-p-custom" onclick="setInvPeriod('vlastni',this)">Vlastní</button>
+          </div>
+          <div id="inv-period-nav" style="display:none;align-items:center;gap:8px;">
+            <button class="btn-edit" onclick="shiftChartPeriod('inv',-1)">‹</button>
+            <span id="inv-period-nav-label" style="font-size:12.5px;font-weight:500;min-width:110px;text-align:center;color:var(--text-primary)"></span>
+            <button class="btn-edit" onclick="shiftChartPeriod('inv',1)">›</button>
+          </div>
+          <div class="period-custom" id="inv-custom-wrap">
+            <input type="date" id="inv-from" onchange="renderInvChart()">
+            <span style="font-size:12px;color:var(--text-secondary)">—</span>
+            <input type="date" id="inv-to" onchange="renderInvChart()">
+            <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary);cursor:pointer;white-space:nowrap;"><input type="checkbox" id="inv-today" onchange="todayCheck('inv-to',this,renderInvChart)" style="cursor:pointer"> dnes</label>
+          </div>
+        </div>
+      </div>
+      <div id="inv-chart-filter" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
+      <div style="position:relative;width:100%;height:210px;"><canvas id="chartInvestments"></canvas></div>
+    </div>
+    <div id="inv-groups-card" style="display:none;"></div>
+    <div class="table-card">
+      <div class="table-header"><span class="table-title">Portfolio</span></div>
+      <div id="inv-list"><div style="padding:24px;text-align:center;color:var(--text-secondary);font-size:13px;">Zatím žádné investice.</div></div>
+    </div>
+  </div>
+
+  <div class="section" id="section-budget">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div class="page-title">Rozpočet</div>
+      <button class="btn" onclick="openBudModal(-1)">+ Přidat kategorii</button>
+    </div>
+    <div id="budget-list" style="display:flex;flex-direction:column;gap:12px;"></div>
+    <div id="budget-empty" style="padding:24px;text-align:center;color:var(--text-secondary);font-size:13px;">Přidej kategorie rozpočtu!</div>
+  </div>
+  <div class="section" id="section-categories">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div><div class="page-title">Kategorie</div><div class="page-sub">Správa kategorií transakcí</div></div>
+      <button class="btn" onclick="openCatModal(-1)">+ Přidat kategorii</button>
+    </div>
+    <div id="categories-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;"></div>
+  </div>
+
+  <div class="section" id="section-links">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div><div class="page-title">Sdílení</div><div class="page-sub">Propojení s přáteli a sdílené výdaje</div></div>
+    </div>
+
+    <!-- Můj profil -->
+    <div class="table-card" style="margin-top:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--card-border);">
+        <span style="font-size:14px;font-weight:600;">Můj profil</span>
+        <button class="btn" style="font-size:12px;padding:5px 12px;" onclick="openMyProfileModal()">Upravit</button>
+      </div>
+      <div id="my-profile-card" style="padding:14px 16px;"></div>
+    </div>
+
+    <!-- Přátelé -->
+    <div class="table-card" style="margin-top:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--card-border);">
+        <span style="font-size:14px;font-weight:600;">Přátelé</span>
+        <button class="btn" style="font-size:12px;padding:5px 12px;" onclick="openAddFriendModal()">+ Přidat přítele</button>
+      </div>
+      <div id="friends-list" style="padding:10px"></div>
+    </div>
+
+    <!-- Sdílené skupiny -->
+    <div class="table-card" style="margin-top:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--card-border);">
+        <span style="font-size:14px;font-weight:600;">Sdílené skupiny</span>
+        <button class="btn" style="font-size:12px;padding:5px 12px;" onclick="openCreateGroupModal()">+ Nová skupina</button>
+      </div>
+      <div id="shared-groups-list" style="padding:10px"></div>
+    </div>
+
+    <!-- Detail skupiny -->
+    <div id="shared-group-detail" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+        <div>
+          <div class="page-title" id="sg-detail-title"></div>
+          <div class="page-sub" id="sg-detail-sub"></div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn" style="font-size:12px;padding:5px 12px;" onclick="openAddSharedTxnModal()">+ Výdaj</button>
+          <button class="btn-edit" id="sg-edit-btn" onclick="openEditGroupModal(viewingSharedGroup)" style="display:none;">✎ Upravit</button>
+          <button class="btn btn-outline" onclick="closeSharedGroupDetail()">← Zpět</button>
+        </div>
+      </div>
+      <div id="sg-summary" style="margin-bottom:12px;"></div>
+      <div class="tabs" id="sg-detail-tabs" style="margin-bottom:12px;"></div>
+      <div id="sg-txn-list"></div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<!-- MODAL KATEGORIE -->
+<div class="modal-overlay" id="modal-cat">
+  <div class="modal"><h3 id="cat-modal-title">Nová kategorie</h3>
+    <div class="form-group"><label>Název kategorie</label><input type="text" id="cat-name" placeholder="např. Domácnost" oninput="this.value=this.value.toUpperCase()"></div>
+    <div class="form-group">
+      <label>Barva</label>
+      <div id="cat-color-picker" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;"></div>
+    </div>
+    <div class="form-group">
+      <label>Ikona</label>
+      <div id="cat-icon-picker" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="cat-delete-btn" onclick="deleteCat()" style="display:none">Smazat</button>
+      <button class="btn btn-outline" onclick="closeModal('cat')">Zrušit</button>
+      <button class="btn" onclick="saveCat()">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MŮJ PROFIL -->
+<div class="modal-overlay" id="modal-myprofile">
+  <div class="modal"><h3>Můj profil</h3>
+    <div class="form-group"><label>Zobrazované jméno</label><input type="text" id="mp-name" placeholder="např. Tomáš"></div>
+    <div class="form-group">
+      <label>Avatar</label>
+      <div id="mp-icon-picker" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('myprofile')">Zrušit</button>
+      <button class="btn" onclick="saveMyProfile()">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PŘIDAT PŘÍTELE -->
+<div class="modal-overlay" id="modal-addfriend">
+  <div class="modal"><h3>Přidat přítele</h3>
+    <div class="form-group"><label>Email přítele</label><input type="email" id="af-email" placeholder="email@example.com"></div>
+    <div id="af-status" style="font-size:12px;margin-bottom:10px;display:none;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('addfriend')">Zrušit</button>
+      <button class="btn" onclick="sendFriendRequest()">Odeslat žádost</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOVÁ SDÍLENÁ SKUPINA -->
+<div class="modal-overlay" id="modal-creategroup">
+  <div class="modal"><h3 id="cg-title">Nová sdílená skupina</h3>
+    <div class="form-group"><label>Název skupiny</label><input type="text" id="cg-name" placeholder="např. Domácnost"></div>
+    <div class="form-group">
+      <label>Členové (přátelé)</label>
+      <div id="cg-friends-picker" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('creategroup')">Zrušit</button>
+      <button class="btn" onclick="saveSharedGroup()">Vytvořit</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SDÍLENÁ TRANSAKCE -->
+<div class="modal-overlay" id="modal-sharedtxn">
+  <div class="modal"><h3 id="st-modal-title">Nový sdílený výdaj</h3>
+    <div class="form-row">
+      <div class="form-group"><label>Částka</label><input type="number" id="st-amount" placeholder="0" min="0" step="1"></div>
+      <div class="form-group"><label>Měna</label><select id="st-currency"><option value="CZK">CZK</option><option value="EUR">EUR</option><option value="USD">USD</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Kategorie</label><input type="text" id="st-category" placeholder="např. Nákup"></div>
+      <div class="form-group"><label>Datum</label><input type="date" id="st-date"></div>
+    </div>
+    <div class="form-group"><label>Popis (volitelně)</label><input type="text" id="st-desc" placeholder="např. Albert velký nákup"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('sharedtxn')">Zrušit</button>
+      <button class="btn" onclick="saveSharedTxn()">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TRANSAKCE -->
+<div class="modal-overlay" id="modal-txn">
+  <div class="modal"><h3 id="txn-modal-title">Nová transakce</h3>
+    <div class="form-group" id="txn-recurring-row" style="display:none">
+      <label>Opakování</label>
+      <div class="form-row">
+        <select id="txn-recurring-interval" onchange="updateRecurringHint()">
+          <option value="weekly">Týdně</option>
+          <option value="monthly" selected>Měsíčně</option>
+          <option value="yearly">Ročně</option>
+        </select>
+        <input type="date" id="txn-recurring-start" onchange="updateRecurringHint()">
+      </div>
+      <div id="txn-recurring-hint" style="font-size:12px;color:var(--text-secondary);margin-top:4px"></div>
+      <div class="form-row" style="margin-top:8px">
+        <div class="form-group" style="margin-bottom:0"><label style="font-size:12px;color:var(--text-secondary)">Konec (volitelně)</label><input type="date" id="txn-recurring-end"></div>
+        <div class="form-group" style="margin-bottom:0;display:flex;align-items:center;gap:10px;padding-top:18px">
+          <label class="toggle" style="margin:0"><input type="checkbox" id="txn-recurring-enabled" checked onchange="updateToggle('txn-recurring-enabled')"><span class="toggle-slider"></span></label>
+          <span style="font-size:13px;color:var(--text-secondary)">Aktivní</span>
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Typ</label><select id="txn-type"><option value="vydaj">Výdaj</option><option value="prijem">Příjem</option></select></div>
+      <div class="form-group"><label>Měna</label><select id="txn-currency"><option value="CZK">CZK</option><option value="EUR">EUR</option><option value="USD">USD</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Částka</label><input type="number" id="txn-amount" placeholder="0" min="0" step="1"></div>
+      <div class="form-group" id="txn-date-row"><label>Datum</label><input type="date" id="txn-date"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>KATEGORIE <span style="color:var(--red)">*</span></label><select id="txn-cat" style="font-weight:500;text-transform:uppercase;letter-spacing:0.3px"></select></div>
+      <div class="form-group"><label>Účet</label><select id="txn-acc-select"><option value="">— žádný —</option></select></div>
+    </div>
+    <div class="form-group">
+      <label>Štítky (volitelně)</label>
+      <div class="tag-wrap-pos">
+        <div class="tag-input-wrap" id="tag-input-wrap" onclick="document.getElementById('txn-tag-input').focus()">
+          <div id="txn-tags-preview" style="display:contents"></div>
+          <input type="text" id="txn-tag-input" placeholder="Přidej štítek a stiskni Enter..." autocomplete="off"
+            onkeydown="handleTagKey(event)" oninput="showTagSuggestions(this.value)">
+        </div>
+        <div class="tag-suggestions" id="tag-suggestions" style="display:none"></div>
+      </div>
+      <div id="tag-quick-picks" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;"></div>
+    </div>
+    <div class="form-group">
+      <label>Popis (volitelně)</label>
+      <div class="ac-wrap">
+        <input type="text" id="txn-desc" placeholder="např. Nákup v Albertu" autocomplete="off"
+          oninput="showAc('txn-desc','ac-txn-desc')" onkeydown="handleAcKey(event,'txn-desc','ac-txn-desc')" onfocus="showAc('txn-desc','ac-txn-desc')">
+        <div class="ac-list" id="ac-txn-desc" style="display:none"></div>
+      </div>
+    </div>
+    <div class="form-group" id="txn-shared-group-row">
+      <label>Sdílená skupina (volitelně)</label>
+      <select id="txn-shared-group"><option value="">— nesdílet —</option></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="txn-delete-btn" onclick="deleteTxn()" style="display:none">Smazat</button>
+      <button class="btn btn-outline" onclick="closeModal('txn')">Zrušit</button>
+      <button class="btn" onclick="saveTxn()">Uložit</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL ÚČET -->
+<div class="modal-overlay" id="modal-acc">
+  <div class="modal"><h3 id="acc-modal-title">Nový účet</h3>
+    <div class="form-group"><label>Název účtu</label><input type="text" id="acc-name" placeholder="např. Sporožiro"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Zůstatek</label><input type="number" id="acc-balance" placeholder="0" step="1"></div>
+      <div class="form-group"><label>Měna</label><select id="acc-currency"><option value="CZK">CZK</option><option value="EUR">EUR</option><option value="USD">USD</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Typ účtu</label><select id="acc-type"><option value="bank">Běžný účet</option><option value="savings">Spořicí účet</option><option value="cash">Hotovost</option><option value="card">Kreditní karta</option></select></div>
+    </div>
+    <div class="form-group"><label>Datum počátečního zůstatku <span style="color:var(--text-secondary);font-weight:400">(volitelně)</span></label><input type="date" id="acc-start-date"></div>
+    <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;background:var(--card-bg);border:1px solid var(--card-border);border-radius:8px;padding:10px 14px;">
+      <div>
+        <div style="font-size:13.5px;font-weight:500">Zahrnout do celkového majetku</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">Vypni např. pro kreditní kartu</div>
+      </div>
+      <label style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer;flex-shrink:0;">
+        <input type="checkbox" id="acc-include" checked style="opacity:0;width:0;height:0;" onchange="updateToggle('acc-include')">
+        <span id="acc-include-track" style="position:absolute;inset:0;border-radius:11px;background:#4f8ef7;transition:0.2s;"></span>
+        <span id="acc-include-thumb" style="position:absolute;left:21px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:0.2s;"></span>
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="acc-delete-btn" onclick="deleteAcc()" style="display:none">Smazat</button>
+      <button class="btn btn-outline" onclick="closeModal('acc')">Zrušit</button>
+      <button class="btn" onclick="saveAcc()">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PŘEVOD -->
+<div class="modal-overlay" id="modal-transfer">
+  <div class="modal"><h3>Převod mezi účty</h3>
+    <div class="form-group"><label>Z účtu</label><select id="tr-from" onchange="updateTransferHint()"></select></div>
+    <div class="transfer-arrow">↓</div>
+    <div class="form-group"><label>Na účet</label><select id="tr-to" onchange="updateTransferHint()"></select></div>
+    <div class="form-row">
+      <div class="form-group"><label>Částka (ve měně zdrojového účtu)</label><input type="number" id="tr-amount" placeholder="0" min="0" step="1" oninput="updateTransferHint()"></div>
+      <div class="form-group"><label>Datum</label><input type="date" id="tr-date"></div>
+    </div>
+    <div id="tr-hint" style="font-size:11.5px;color:var(--text-secondary);margin-bottom:12px;min-height:18px;"></div>
+    <div class="form-group">
+      <label>Poznámka (volitelně)</label>
+      <div class="ac-wrap">
+        <input type="text" id="tr-note" placeholder="např. Přesun na spoření" autocomplete="off"
+          oninput="showAc('tr-note','ac-tr-note')" onkeydown="handleAcKey(event,'tr-note','ac-tr-note')" onfocus="showAc('tr-note','ac-tr-note')">
+        <div class="ac-list" id="ac-tr-note" style="display:none"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('transfer')">Zrušit</button>
+      <button class="btn" onclick="saveTransfer()">Provést převod</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL INVESTICE -->
+<div class="modal-overlay" id="modal-inv">
+  <div class="modal"><h3 id="inv-modal-title">Nová investice</h3>
+
+    <!-- Přepínač módu -->
+    <div class="tabs" style="margin-bottom:16px;width:100%;box-sizing:border-box;">
+      <button class="tab active" id="inv-tab-auto" onclick="setInvMode('auto')" style="flex:1;">Automatické (API)</button>
+      <button class="tab" id="inv-tab-manual" onclick="setInvMode('manual')" style="flex:1;">Ruční</button>
+    </div>
+
+    <!-- Společná pole -->
+    <div class="form-row">
+      <div class="form-group"><label>Ticker / Název</label><input type="text" id="inv-ticker" placeholder="např. iShares MSCI World, AAPL"></div>
+      <div class="form-group"><label>Typ</label><select id="inv-type"><option>Akcie</option><option>ETF</option><option>Krypto</option><option>Dluhopisy</option><option>Podílový fond</option><option>Jiné</option></select></div>
+    </div>
+    <div class="form-group"><label id="inv-date-label">Datum nákupu</label><input type="date" id="inv-start-date"></div>
+    <div class="form-group"><label>Skupina <span style="color:var(--text-secondary);font-weight:400">(volitelně)</span></label>
+      <select id="inv-group-select"><option value="">— bez skupiny —</option></select>
+    </div>
+
+    <!-- AUTO sekce -->
+    <div id="inv-section-auto">
+      <div class="form-group">
+        <label>Symbol instrumentu <span style="color:var(--text-secondary);font-weight:400">(např. SXR8.DE, AAPL, BTC)</span></label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="inv-api-symbol" placeholder="např. SXR8.DE" style="text-transform:uppercase;flex:1;" oninput="this.value=this.value.toUpperCase()">
+          <button type="button" class="btn btn-outline btn-sm" id="inv-fetch-price-btn" onclick="fetchPriceForModal()" style="white-space:nowrap;flex-shrink:0;">Načíst cenu</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Počet kusů</label>
+          <input type="number" id="inv-shares" placeholder="např. 12.5" min="0" step="0.0001" oninput="calcInvInvested()">
+        </div>
+        <div class="form-group">
+          <label>Nákupní cena / ks (Kč) <span id="inv-price-source" style="color:var(--text-secondary);font-weight:400;"></span></label>
+          <input type="number" id="inv-purchase-price" placeholder="klikni Načíst cenu" min="0" step="0.01" oninput="calcInvInvested()">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Investováno (Kč)</label>
+          <input type="number" id="inv-invested" placeholder="0" min="0" step="1">
+        </div>
+        <div class="form-group">
+          <label>Akt. hodnota (Kč)</label>
+          <input type="number" id="inv-value" placeholder="0" min="0" step="1">
+        </div>
+      </div>
+      <div class="rate-hint" style="margin-top:-6px;margin-bottom:4px;">Po uložení se automaticky stáhne celá cenová historie a sestrojí graf.</div>
+    </div>
+
+    <!-- MANUÁLNÍ sekce -->
+    <div id="inv-section-manual" style="display:none;">
+      <div class="form-row">
+        <div class="form-group"><label>Investováno (Kč)</label><input type="number" id="inv-invested-m" placeholder="0" min="0" step="1"></div>
+        <div class="form-group"><label>Akt. hodnota (Kč)</label><input type="number" id="inv-value-m" placeholder="0" min="0" step="1"></div>
+      </div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:8px;">
+      <button class="btn btn-danger" id="inv-delete-btn" onclick="deleteInv()" style="display:none">Smazat</button>
+      <button class="btn btn-outline" onclick="closeModal('inv')">Zrušit</button>
+      <button class="btn" onclick="saveInv()">Uložit</button>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- MODAL AKTUALIZACE HODNOTY -->
+<div class="modal-overlay" id="modal-inv-update">
+  <div class="modal"><h3>Aktualizovat hodnotu investice</h3>
+    <div class="form-group">
+      <label>Investice</label>
+      <select id="inv-update-select" onchange="onInvUpdateSelect()"></select>
+    </div>
+    <div style="background:var(--card-bg);border-radius:8px;padding:12px 14px;margin-bottom:14px;">
+      <div style="font-size:12px;color:var(--text-secondary)">Předchozí hodnota</div>
+      <div style="font-size:18px;font-weight:600;color:var(--accent)" id="inv-update-prev">—</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Nová aktuální hodnota (Kč)</label><input type="number" id="inv-update-value" placeholder="0" min="0" step="1" oninput="updateInvPreview()"></div>
+      <div class="form-group"><label>Datum</label><input type="date" id="inv-update-date"></div>
+    </div>
+    <div id="inv-update-preview" style="min-height:24px;font-size:13px;margin-bottom:8px;"></div>
+    <div class="form-group"><label>Poznámka (volitelně)</label><input type="text" id="inv-update-note" placeholder="např. Q1 2025, po dividendách..."></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('inv-update')">Zrušit</button>
+      <button class="btn" onclick="saveInvUpdate()">Uložit aktualizaci</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL SKUPINA INVESTIC -->
+<div class="modal-overlay" id="modal-inv-group">
+  <div class="modal"><h3 id="inv-group-modal-title">Nová skupina</h3>
+    <div class="form-group"><label>Název skupiny</label><input type="text" id="inv-group-name" placeholder="např. XTB Investiční plán, ČSOB Bohatství..."></div>
+    <div class="form-group"><label>Barva</label>
+      <div id="inv-group-color-picker" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;"></div>
+    </div>
+    <div class="form-group"><label>Poznámka (volitelně)</label><input type="text" id="inv-group-note" placeholder="např. Měsíční příspěvek 2 000 Kč..."></div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="inv-group-delete-btn" onclick="deleteInvGroup()" style="display:none">Smazat skupinu</button>
+      <button class="btn btn-outline" onclick="closeModal('inv-group')">Zrušit</button>
+      <button class="btn" onclick="saveInvGroup()">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-invest-from-acc">
+  <div class="modal"><h3>Investovat z účtu</h3>
+    <div class="form-group"><label>Z účtu (odečte zůstatek)</label><select id="ifa-acc" onchange="updateIfaHint()"></select></div>
+    <div class="form-group"><label>Do investice</label><select id="ifa-inv" onchange="onIfaInvChange()"></select></div>
+
+    <!-- Sekce pro automaticky sledovanou investici (má apiSymbol) -->
+    <div id="ifa-auto-section" style="display:none;">
+      <div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:8px;padding:10px 13px;margin-bottom:12px;font-size:12.5px;">
+        <span style="color:var(--text-secondary);">Symbol:</span>
+        <span id="ifa-symbol-badge" style="color:var(--accent);font-weight:600;margin-left:6px;"></span>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Datum nákupu</label><input type="date" id="ifa-date-auto" onchange="resetIfaPrice()"></div>
+        <div class="form-group">
+          <label>Počet kusů</label>
+          <input type="number" id="ifa-shares-bought" placeholder="např. 3.5" min="0" step="0.0001" oninput="calcIfaAmount()">
+        </div>
+      </div>
+      <div class="form-row" style="align-items:flex-end;">
+        <div class="form-group" style="flex:1;">
+          <label>Cena / ks (Kč) <span id="ifa-price-source" style="color:var(--text-secondary);font-weight:400;"></span></label>
+          <input type="number" id="ifa-unit-price" placeholder="klikni Načíst →" min="0" step="0.01" oninput="calcIfaAmount()">
+        </div>
+        <div style="padding-bottom:14px;">
+          <button type="button" class="btn btn-outline btn-sm" id="ifa-fetch-btn" onclick="fetchIfaPriceAtDate()" style="white-space:nowrap;">Načíst cenu k datu</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Částka (ve měně účtu)</label><input type="number" id="ifa-amount" placeholder="0" min="0" step="1" oninput="updateIfaHint()"></div>
+        <div class="form-group"><label>Poznámka (volitelně)</label><input type="text" id="ifa-note-auto" placeholder="např. Nákup ETF"></div>
+      </div>
+    </div>
+
+    <!-- Sekce pro ručně sledovanou investici -->
+    <div id="ifa-manual-section">
+      <div class="form-row">
+        <div class="form-group"><label>Částka (ve měně účtu)</label><input type="number" id="ifa-amount-m" placeholder="0" min="0" step="1" oninput="updateIfaHint()"></div>
+        <div class="form-group"><label>Datum</label><input type="date" id="ifa-date"></div>
+      </div>
+      <div class="form-group"><label>Poznámka (volitelně)</label><input type="text" id="ifa-note" placeholder="např. Nákup ETF"></div>
+    </div>
+
+    <div id="ifa-hint" style="font-size:11.5px;color:var(--text-secondary);margin-bottom:12px;min-height:18px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('invest-from-acc')">Zrušit</button>
+      <button class="btn" onclick="saveInvestFromAcc()">Investovat</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ROZPOČET -->
+<div class="modal-overlay" id="modal-bud">
+  <div class="modal"><h3 id="bud-modal-title">Nový rozpočet</h3>
+    <div class="form-group"><label>Název</label><input type="text" id="bud-name" placeholder="např. Jídlo, Cestování..."></div>
+    <div class="form-group">
+      <label>Typ rozpočtu</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
+        <div id="bud-type-periodic" onclick="setBudType('periodic')" style="padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent-dim);cursor:pointer;text-align:center;">
+          <div style="font-size:13px;font-weight:500;color:var(--accent)">Periodický</div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">obnovuje se každý period</div>
+        </div>
+        <div id="bud-type-cumulative" onclick="setBudType('cumulative')" style="padding:10px;border-radius:8px;border:1px solid var(--card-border);cursor:pointer;text-align:center;">
+          <div style="font-size:13px;font-weight:500">Kumulativní</div>
+          <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">celkový součet vždy</div>
+        </div>
+      </div>
+    </div>
+    <div class="form-row" id="bud-periodic-opts">
+      <div class="form-group"><label>Limit (Kč)</label><input type="number" id="bud-limit" placeholder="0" min="0" step="100"></div>
+      <div class="form-group"><label>Období</label>
+        <select id="bud-period">
+          <option value="month">Měsíc</option>
+          <option value="week">Týden</option>
+          <option value="year">Rok</option>
+        </select>
+      </div>
+    </div>
+    <div id="bud-cumulative-opts" style="display:none;">
+      <div class="form-group"><label>Celkový limit (Kč, volitelně)</label><input type="number" id="bud-limit-cum" placeholder="0 = bez limitu" min="0" step="100"></div>
+    </div>
+    <div class="form-group">
+      <label>Sledovat podle</label>
+      <div style="display:flex;gap:6px;margin-top:4px;">
+        <button id="bud-track-cats-btn" onclick="setBudTrackMode('cats')" class="period-btn active" style="border-radius:8px;">Kategorie</button>
+        <button id="bud-track-tags-btn" onclick="setBudTrackMode('tags')" class="period-btn" style="border-radius:8px;">Štítky</button>
+      </div>
+    </div>
+    <div id="bud-track-cats-wrap">
+      <div class="form-group"><label>Sledované kategorie</label>
+        <div id="bud-cats-picker" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;"></div>
+        <div style="font-size:11.5px;color:var(--text-secondary);margin-top:6px">Pokud nevybereš žádnou, bere se název jako kategorie.</div>
+      </div>
+    </div>
+    <div id="bud-track-tags-wrap" style="display:none;">
+      <div class="form-group"><label>Sledované štítky</label>
+        <div id="bud-tags-picker" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;"></div>
+        <div style="font-size:11.5px;color:var(--text-secondary);margin-top:6px">Zahrnou se transakce ze všech kategorií s těmito štítky.</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Co sledovat</label>
+      <div style="display:flex;gap:6px;margin-top:4px;">
+        <button id="bud-flow-out-btn" onclick="setBudFlowMode('vydaj')" class="period-btn active" style="border-radius:8px;">Výdaje</button>
+        <button id="bud-flow-net-btn" onclick="setBudFlowMode('net')" class="period-btn" style="border-radius:8px;">Čistý tok (výdaje − příjmy)</button>
+      </div>
+    </div>
+    <div class="form-group"><label>Barva</label>
+      <div id="bud-color-picker" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="bud-delete-btn" onclick="deleteBud()" style="display:none">Smazat</button>
+      <button class="btn btn-outline" onclick="closeModal('bud')">Zrušit</button>
+      <button class="btn" onclick="saveBud()">Uložit</button>
+    </div>
+  </div>
+</div>
+
+
+<script src="js/config.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/categories.js"></script>
+<script src="js/sharing.js"></script>
+<script src="js/transactions.js"></script>
+<script src="js/accounts.js"></script>
+<script src="js/investments.js"></script>
+<script src="js/budget.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/auth.js"></script>
+
+</body>
+</html>
