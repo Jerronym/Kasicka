@@ -24,12 +24,12 @@ const DEMO_DATA={"_version": 1, "_exported": "2026-03-22T12:00:00.000Z", "transa
 function loadFromStorage(){
   try{
     const raw=localStorage.getItem(LS_KEY);
-    if(!raw){applyImport(DEMO_DATA);return;}
+    if(!raw){applyImport({});return;}
     applyImport(JSON.parse(raw));
   }catch(e){
     console.warn('Chyba při načítání dat z localStorage:',e.message);
-    toast('Nepodařilo se načíst uložená data. Načtena demo data.','warn');
-    applyImport(DEMO_DATA);
+    toast('Nepodařilo se načíst uložená data.','warn');
+    applyImport({});
   }
 }
 

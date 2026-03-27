@@ -59,8 +59,8 @@ async function loadFromCloud(){
   if(data?.data){
     applyImport(data.data);
   } else {
-    // Nový uživatel — začni s čistými daty (nenačítej localStorage jiného uživatele)
-    applyImport(DEMO_DATA);
+    // Nový uživatel — začni s prázdnými daty
+    applyImport({});
   }
   processRecurringTxns();
   initCategories();
