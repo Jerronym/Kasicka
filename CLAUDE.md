@@ -73,3 +73,9 @@ recurring: {
   - [x] Opravit bug: otevreni modalniho okna "nova klasicka transakce" po predchozim otevreni "nova opakovana transakce" nespravne zobrazovalo modal opakovane transakce
     - Pricina: `recurringMode` zustavalo `true` jako globalni stav
     - Reseni: `openTxnModal(idx, recurring=false)` — novy parametr explicitne predava stav; `openRecurringTxnModal()` vola `openTxnModal(-1, true)`
+- Oprava bugu tyden v nedeli (2026-03-27)
+  - [x] Opravit bug: tydenni filtry (rozpocty, grafy, dashboard, transakce) zobrazovaly 0/prazdno v nedeli
+    - Pricina: `getDay()` vraci 0 pro nedeli; formule `-getDay()+1` dala +1 = zitrejsi pondeli → zadne transakce nespadaly do rozsahu
+    - Reseni: `(getDay()||7)` konvertuje nedeli na 7, ostatni dny beze zmeny — opraveno na 7 mistech (budget.js, ui.js)
+  - [x] Opravit: badge 🔁 se nezobrazoval u automaticky generovanych opakovanych transakci
+    - Reseni: `t.recurring||t.recurringGenerated` v podmince pro zobrazeni badge (transactions.js, 2 mista)

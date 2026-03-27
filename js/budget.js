@@ -161,7 +161,7 @@ function getBudgetSpent(b){
   }
   const period=b.period||'month';
   let from;
-  if(period==='week'){from=new Date(now);from.setDate(from.getDate()-from.getDay()+1);}
+  if(period==='week'){from=new Date(now);from.setDate(from.getDate()-(from.getDay()||7)+1);}
   else if(period==='year'){from=new Date(now.getFullYear(),0,1);}
   else{from=new Date(now.getFullYear(),now.getMonth(),1);}
   return calcNet(transactions.filter(t=>{

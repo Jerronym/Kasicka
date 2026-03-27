@@ -93,7 +93,7 @@ function updatePeriodNavLabel(){
   const now=new Date();
   if(activePeriod==='tyden'){
     const base=new Date(now);
-    base.setDate(base.getDate()-base.getDay()+1+periodOffset*7);
+    base.setDate(base.getDate()-(base.getDay()||7)+1+periodOffset*7);
     const end=new Date(base);end.setDate(end.getDate()+6);
     el.textContent=base.toLocaleDateString('cs-CZ',{day:'2-digit',month:'short'})+' – '+end.toLocaleDateString('cs-CZ',{day:'2-digit',month:'short',year:'numeric'});
   } else if(activePeriod==='mesic'){
@@ -115,7 +115,7 @@ function getDateRange(period){
   if(period==='dnes') return {from:now,to:now};
   if(period==='tyden'){
     const mon=new Date(now);
-    mon.setDate(mon.getDate()-mon.getDay()+1+periodOffset*7);
+    mon.setDate(mon.getDate()-(mon.getDay()||7)+1+periodOffset*7);
     mon.setHours(0,0,0,0);
     const sun=new Date(mon);sun.setDate(sun.getDate()+6);sun.setHours(23,59,59,999);
     return{from:mon,to:sun};
@@ -180,7 +180,7 @@ function updateDashNavLabel(){
   const now=new Date();
   if(dashPeriod==='tyden'){
     const base=new Date(now);
-    base.setDate(base.getDate()-base.getDay()+1+dashOffset*7);
+    base.setDate(base.getDate()-(base.getDay()||7)+1+dashOffset*7);
     const end=new Date(base);end.setDate(end.getDate()+6);
     el.textContent=base.toLocaleDateString('cs-CZ',{day:'2-digit',month:'short'})+' – '+end.toLocaleDateString('cs-CZ',{day:'2-digit',month:'short',year:'numeric'});
   } else if(dashPeriod==='mesic'){
@@ -197,7 +197,7 @@ function getDashDateRange(){
   const now=new Date(); now.setHours(0,0,0,0);
   if(dashPeriod==='tyden'){
     const mon=new Date(now);
-    mon.setDate(mon.getDate()-mon.getDay()+1+dashOffset*7);
+    mon.setDate(mon.getDate()-(mon.getDay()||7)+1+dashOffset*7);
     mon.setHours(0,0,0,0);
     const sun=new Date(mon);sun.setDate(sun.getDate()+6);sun.setHours(23,59,59,999);
     return{from:mon,to:sun};
@@ -245,7 +245,7 @@ function updateChartNavLabel(chart){
   const now=new Date();
   if(period==='tyden'){
     const base=new Date(now);
-    base.setDate(base.getDate()-base.getDay()+1+offset*7);
+    base.setDate(base.getDate()-(base.getDay()||7)+1+offset*7);
     const end=new Date(base);end.setDate(end.getDate()+6);
     el.textContent=base.toLocaleDateString('cs-CZ',{day:'2-digit',month:'short'})+' – '+end.toLocaleDateString('cs-CZ',{day:'2-digit',month:'short'});
   } else if(period==='mesic'){
@@ -260,7 +260,7 @@ function getChartDateRange(period, offset){
   const now=new Date(); now.setHours(0,0,0,0);
   if(period==='tyden'){
     const mon=new Date(now);
-    mon.setDate(mon.getDate()-mon.getDay()+1+offset*7);
+    mon.setDate(mon.getDate()-(mon.getDay()||7)+1+offset*7);
     mon.setHours(0,0,0,0);
     const sun=new Date(mon);sun.setDate(sun.getDate()+6);sun.setHours(23,59,59,999);
     return{from:mon,to:sun};

@@ -636,7 +636,7 @@ function renderTxns(){
       :`<span style="color:var(--text-secondary)">${accName}</span>`;
     return`<tr>
       <td style="color:var(--text-secondary);font-size:12px;white-space:nowrap">${t.date}</td>
-      <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${t.desc?'inherit':'var(--text-secondary);font-style:italic'}">${t.recurring?'<span title="Opakující se" style="font-size:11px;margin-right:3px">🔁</span>':''}${escHtml(t.desc||t.cat)}</td>
+      <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${t.desc?'inherit':'var(--text-secondary);font-style:italic'}">${(t.recurring||t.recurringGenerated)?'<span title="Opakující se" style="font-size:11px;margin-right:3px">🔁</span>':''}${escHtml(t.desc||t.cat)}</td>
       <td><div style="display:flex;gap:4px;flex-wrap:wrap">${sharedBadge(t)}${tagsHtml(t)||(!t.sharedGroupId?'—':'')}</div></td>
       <td><span class="badge ${getCatBadge(t.cat)}" style="text-transform:uppercase;letter-spacing:0.3px">${escHtml(t.cat)}</span></td>
       <td style="font-size:12px;white-space:nowrap">${accCell}</td>
@@ -664,7 +664,7 @@ function renderTxns(){
       :accName;
     return`<div class="txn-card">
       <div class="txn-card-row">
-        <span class="txn-card-desc">${t.recurring?'<span title="Opakující se" style="font-size:11px;margin-right:3px">🔁</span>':''}${escHtml(t.desc||t.cat)}</span>
+        <span class="txn-card-desc">${(t.recurring||t.recurringGenerated)?'<span title="Opakující se" style="font-size:11px;margin-right:3px">🔁</span>':''}${escHtml(t.desc||t.cat)}</span>
         <span class="txn-card-amount" style="color:${col}">${sign} ${fmt(t.amount,t.cur)}</span>
       </div>
       <div class="txn-card-meta">
