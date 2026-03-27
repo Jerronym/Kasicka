@@ -85,6 +85,21 @@ function refreshTransferSelects(){
   });
 }
 
+function duplicateTxn(idx){
+  const t=transactions[idx];
+  if(!t||t.type==='prevod') return;
+  openTxnModal(-1);
+  document.getElementById('txn-modal-title').textContent='Duplikovat transakci';
+  document.getElementById('txn-desc').value=t.desc||'';
+  document.getElementById('txn-amount').value=t.amount;
+  document.getElementById('txn-type').value=t.type;
+  document.getElementById('txn-currency').value=t.cur||'CZK';
+  document.getElementById('txn-cat').value=t.cat||'';
+  document.getElementById('txn-acc-select').value=t.accIdx!==''?t.accIdx:'';
+  currentTags=Array.isArray(t.tags)?[...t.tags]:(t.tag?[t.tag]:[]);
+  renderTagsPreview();
+}
+
 function openTransferModal(){
   document.getElementById('tr-amount').value='';
   document.getElementById('tr-note').value='';
@@ -641,7 +656,7 @@ function renderTxns(){
       <td><span class="badge ${getCatBadge(t.cat)}" style="text-transform:uppercase;letter-spacing:0.3px">${escHtml(t.cat)}</span></td>
       <td style="font-size:12px;white-space:nowrap">${accCell}</td>
       <td style="text-align:right;font-weight:500;color:${col};white-space:nowrap">${sign} ${fmt(t.amount,t.cur)}</td>
-      <td><div class="action-btns">${t.type!=='prevod'?`<button class="btn-edit" onclick="openTxnModal(${realIdx})">Upravit</button>`:''}<button class="btn-del" onclick="quickDeleteTxn(${realIdx})">✕</button></div></td>
+      <td><div class="action-btns">${t.type!=='prevod'?`<button class="btn-edit" onclick="openTxnModal(${realIdx})">Upravit</button><button class="btn-edit" onclick="duplicateTxn(${realIdx})" title="Duplikovat">⧉</button>`:''}<button class="btn-del" onclick="quickDeleteTxn(${realIdx})">✕</button></div></td>
     </tr>`;
   }).join('');
   if(hasMore){
@@ -673,7 +688,7 @@ function renderTxns(){
         ${sharedBadge(t)}${tagsHtml(t)}
         ${accDisplay?`<span style="font-size:11.5px;color:var(--text-secondary)">${accDisplay}</span>`:''}
         <div class="txn-card-actions">
-          ${t.type!=='prevod'?`<button class="btn-edit" onclick="openTxnModal(${realIdx})">Upravit</button>`:''}
+          ${t.type!=='prevod'?`<button class="btn-edit" onclick="openTxnModal(${realIdx})">Upravit</button><button class="btn-edit" onclick="duplicateTxn(${realIdx})" title="Duplikovat">⧉</button>`:''}
           <button class="btn-del" onclick="quickDeleteTxn(${realIdx})">✕</button>
         </div>
       </div>

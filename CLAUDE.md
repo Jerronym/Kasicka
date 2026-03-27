@@ -73,6 +73,9 @@ recurring: {
   - [x] Opravit bug: otevreni modalniho okna "nova klasicka transakce" po predchozim otevreni "nova opakovana transakce" nespravne zobrazovalo modal opakovane transakce
     - Pricina: `recurringMode` zustavalo `true` jako globalni stav
     - Reseni: `openTxnModal(idx, recurring=false)` — novy parametr explicitne predava stav; `openRecurringTxnModal()` vola `openTxnModal(-1, true)`
+- Duplikovat transakci (2026-03-27)
+  - [x] Tlačítko ⧉ v řádku transakce (desktop i mobil) — skryto u převodů
+  - [x] `duplicateTxn(idx)` otevře modal předvyplněný daty (desc, typ, částka, měna, kat, účet, štítky), datum = dnešek
 - Analytika & grafy na dashboardu (2026-03-27)
   - [x] Graf "Výdaje po kategoriích" — doughnut chart reagující na vybrané období, barvy dle kategorií, top 5 list
   - [x] Graf "Trend — posledních 12 měsíců" — skupinový bar chart příjmy vs výdaje, nezávislý na výběru období
