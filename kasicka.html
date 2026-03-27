@@ -130,11 +130,20 @@
         <div id="dash-budget-preview" style="padding:14px 18px;display:flex;flex-direction:column;gap:12px;"></div>
       </div>
     </div>
-    <div class="chart-wrap" style="margin-top:16px">
-      <div class="chart-wrap-title"><span>Výdaje po kategoriích</span></div>
-      <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;padding:4px 0">
-        <div style="position:relative;width:200px;height:200px;flex-shrink:0"><canvas id="chartCategories"></canvas></div>
-        <ol id="dash-top-cats" style="margin:0;padding-left:18px;flex:1;min-width:140px;font-size:13px;line-height:1.9"></ol>
+    <div class="two-col" style="margin-top:16px">
+      <div class="chart-wrap">
+        <div class="chart-wrap-title"><span>Výdaje po kategoriích</span></div>
+        <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;padding:4px 0">
+          <div style="position:relative;width:200px;height:200px;flex-shrink:0"><canvas id="chartCategories"></canvas></div>
+          <ol id="dash-top-cats" style="margin:0;padding-left:18px;flex:1;min-width:140px;font-size:13px;line-height:1.9"></ol>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-wrap-title"><span>Příjmy po kategoriích</span></div>
+        <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;padding:4px 0">
+          <div style="position:relative;width:200px;height:200px;flex-shrink:0"><canvas id="chartIncome"></canvas></div>
+          <ol id="dash-top-income" style="margin:0;padding-left:18px;flex:1;min-width:140px;font-size:13px;line-height:1.9"></ol>
+        </div>
       </div>
     </div>
     <div class="chart-wrap" style="margin-top:16px">

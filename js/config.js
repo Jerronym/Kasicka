@@ -7,7 +7,7 @@ let currentTags=[];
 let editingTxn=-1,editingAcc=-1,editingInv=-1,editingBud=-1;
 let recurringMode=false;
 let balanceHistory=[],invHistory=[];
-let chartBalance=null,chartAcc=null,chartInv=null,chartCategories=null,chartTrend=null;
+let chartBalance=null,chartAcc=null,chartInv=null,chartCategories=null,chartIncome=null,chartTrend=null;
 let activePeriod='mesic', periodFrom=null, periodTo=null, periodOffset=0;
 let dashPeriod='mesic', accPeriod='mesic', invPeriod='mesic';
 
