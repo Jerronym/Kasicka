@@ -72,6 +72,8 @@ function renderDashboard(){
   }
 
   renderBalanceChart();
+  renderCategoryChart();
+  renderTrendChart();
 }
 
 // Spočítá výdaje pro rozpočet v daném rozsahu (pro Přehled)
@@ -99,6 +101,72 @@ function getBudgetSpentForRange(b, range){
   if(!net) return out;
   const inc=list.filter(t=>t.type==='prijem').reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
   return out-inc;
+}
+
+function renderCategoryChart(){
+  const ctx=document.getElementById('chartCategories');
+  const listEl=document.getElementById('dash-top-cats');
+  if(!ctx||!listEl) return;
+  if(chartCategories){chartCategories.destroy();chartCategories=null;}
+  const range=getDashDateRange();
+  const spend={};
+  transactions.forEach(t=>{
+    if(t.type!=='vydaj') return;
+    if(range){const d=new Date(t.date+'T12:00:00');if(d<range.from||d>range.to) return;}
+    spend[t.cat]=(spend[t.cat]||0)+toCZK(t.amount,t.cur);
+  });
+  const entries=Object.entries(spend).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length){
+    listEl.innerHTML='<li style="color:var(--text-secondary);list-style:none;padding-left:0">Žádné výdaje v tomto období</li>';
+    return;
+  }
+  const total=entries.reduce((s,e)=>s+e[1],0);
+  const top=entries.slice(0,9);
+  const rest=entries.slice(9);
+  if(rest.length){const restSum=rest.reduce((s,e)=>s+e[1],0);top.push(['Ostatní',restSum]);}
+  const getColor=cat=>{
+    if(cat==='Ostatní') return '#888';
+    const c=categories.find(x=>x.name===cat);
+    return c?.color||'#4f8ef7';
+  };
+  const labels=top.map(e=>e[0]);
+  const data=top.map(e=>Math.round(e[1]));
+  const colors=labels.map(getColor);
+  chartCategories=new Chart(ctx,{
+    type:'doughnut',
+    data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:1,borderColor:'rgba(0,0,0,0.2)'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>{const pct=((v.raw/total)*100).toFixed(1);return` ${v.raw.toLocaleString('cs-CZ')} Kč (${pct} %)`;}}}}}
+  });
+  listEl.innerHTML=entries.slice(0,5).map(e=>{
+    const pct=((e[1]/total)*100).toFixed(1);
+    const col=getColor(e[0]);
+    return`<li style="margin-bottom:3px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${col};margin-right:6px;vertical-align:middle"></span><b>${escHtml(e[0])}</b> — ${Math.round(e[1]).toLocaleString('cs-CZ')} Kč <span style="color:var(--text-secondary)">(${pct} %)</span></li>`;
+  }).join('');
+}
+
+function renderTrendChart(){
+  const ctx=document.getElementById('chartTrend');
+  if(!ctx) return;
+  if(chartTrend){chartTrend.destroy();chartTrend=null;}
+  const labels=[],incomeData=[],expenseData=[];
+  for(let i=11;i>=0;i--){
+    const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);
+    const y=d.getFullYear(),m=d.getMonth();
+    const label=d.toLocaleDateString('cs-CZ',{month:'short',year:'2-digit'});
+    const inc=transactions.filter(t=>t.type==='prijem'&&t.date&&new Date(t.date+'T12:00:00').getFullYear()===y&&new Date(t.date+'T12:00:00').getMonth()===m)
+      .reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
+    const exp=transactions.filter(t=>t.type==='vydaj'&&t.date&&new Date(t.date+'T12:00:00').getFullYear()===y&&new Date(t.date+'T12:00:00').getMonth()===m)
+      .reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
+    labels.push(label);incomeData.push(Math.round(inc));expenseData.push(Math.round(exp));
+  }
+  chartTrend=new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Příjmy',data:incomeData,backgroundColor:'rgba(56,203,137,0.7)',borderColor:'rgba(56,203,137,1)',borderWidth:1},
+      {label:'Výdaje',data:expenseData,backgroundColor:'rgba(239,83,80,0.7)',borderColor:'rgba(239,83,80,1)',borderWidth:1}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b92a8',font:{size:11}}},tooltip:{callbacks:{label:v=>` ${v.raw.toLocaleString('cs-CZ')} Kč`}}},scales:{x:{ticks:{color:'#8b92a8',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8b92a8',font:{size:10},callback:v=>v.toLocaleString('cs-CZ')},grid:{color:'rgba(255,255,255,0.04)'}}}}
+  });
 }
 
 function renderBalanceChart(){

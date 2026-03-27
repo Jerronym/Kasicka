@@ -73,6 +73,12 @@ recurring: {
   - [x] Opravit bug: otevreni modalniho okna "nova klasicka transakce" po predchozim otevreni "nova opakovana transakce" nespravne zobrazovalo modal opakovane transakce
     - Pricina: `recurringMode` zustavalo `true` jako globalni stav
     - Reseni: `openTxnModal(idx, recurring=false)` — novy parametr explicitne predava stav; `openRecurringTxnModal()` vola `openTxnModal(-1, true)`
+- Analytika & grafy na dashboardu (2026-03-27)
+  - [x] Graf "Výdaje po kategoriích" — doughnut chart reagující na vybrané období, barvy dle kategorií, top 5 list
+  - [x] Graf "Trend — posledních 12 měsíců" — skupinový bar chart příjmy vs výdaje, nezávislý na výběru období
+  - Nové funkce: `renderCategoryChart()`, `renderTrendChart()` v dashboard.js; volány z `renderDashboard()`
+  - Nové globální proměnné: `chartCategories`, `chartTrend` v config.js
+  - Nové canvas elementy: `#chartCategories`, `#chartTrend` v kasicka.html
 - Oprava bugu tyden v nedeli (2026-03-27)
   - [x] Opravit bug: tydenni filtry (rozpocty, grafy, dashboard, transakce) zobrazovaly 0/prazdno v nedeli
     - Pricina: `getDay()` vraci 0 pro nedeli; formule `-getDay()+1` dala +1 = zitrejsi pondeli → zadne transakce nespadaly do rozsahu
