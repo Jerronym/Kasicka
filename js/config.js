@@ -86,6 +86,7 @@ let txnShownCount=50;
 
 let accOffset=0, invOffset=0;
 let accChartFilter=new Set(), invChartFilter=new Set();
+let invGroupChartFilter=null; // null = všechny skupiny, číslo = index skupiny
 let inflationCache=null;
 
 const catBadgeColors={'#4f8ef7':'badge-blue','#34d399':'badge-green','#f87171':'badge-red','#fbbf24':'badge-amber','#a78bfa':'badge-purple','#2dd4bf':'badge-teal','#f472b6':'badge-purple','#fb923c':'badge-amber','#8b92a8':'badge-blue'};

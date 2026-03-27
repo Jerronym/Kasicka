@@ -552,18 +552,35 @@ function calcInflationLine(inflData, history){
   });
 }
 
+function renderInvGroupFilter(){
+  const el=document.getElementById('inv-group-filter');
+  if(!el) return;
+  if(!invGroups.length){el.innerHTML='';return;}
+  const allActive=invGroupChartFilter===null;
+  let html=`<span onclick="invGroupChartFilter=null;invChartFilter.clear();renderInvChart();" style="padding:4px 10px;border-radius:20px;font-size:12px;cursor:pointer;background:${allActive?'var(--accent-dim)':'var(--card-bg)'};border:1px solid ${allActive?'var(--accent)':'var(--card-border)'};color:${allActive?'var(--accent)':'var(--text-secondary)'};">Vše</span>`;
+  html+=invGroups.map((g,i)=>{
+    const active=invGroupChartFilter===i;
+    const col=g.color||'#4f8ef7';
+    return`<span onclick="invGroupChartFilter=${i};invChartFilter.clear();renderInvChart();" style="padding:4px 10px;border-radius:20px;font-size:12px;cursor:pointer;background:${active?col+'33':'var(--card-bg)'};border:1px solid ${active?col:'var(--card-border)'};color:${active?col:'var(--text-secondary)'};">${escHtml(g.name)}</span>`;
+  }).join('');
+  el.innerHTML=html;
+}
+
 async function renderInvChart(){
   const ctx=document.getElementById('chartInvestments');
   if(!ctx) return;
   if(chartInv){chartInv.destroy();chartInv=null;}
+  renderInvGroupFilter();
   renderInvChartFilter();
   if(!investments.length) return;
 
   const showInflation=document.getElementById('inv-show-inflation')?.checked;
   document.getElementById('inv-inflation-legend').style.display=showInflation?'flex':'none';
 
-  // Vybrané investice
-  const selectedIdxs=invChartFilter.size>0?[...invChartFilter]:investments.map((_,i)=>i);
+  // Vybrané investice (nejprve group filter, pak individual filter)
+  let allIdxs=investments.map((_,i)=>i);
+  if(invGroupChartFilter!==null) allIdxs=allIdxs.filter(i=>investments[i]?.groupIdx===invGroupChartFilter);
+  const selectedIdxs=invChartFilter.size>0?[...invChartFilter].filter(i=>allIdxs.includes(i)):allIdxs;
   const filteredInvs=selectedIdxs.map(i=>investments[i]).filter(Boolean);
   const filteredIdxSet=new Set(selectedIdxs.map(String));
 
