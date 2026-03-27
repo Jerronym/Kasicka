@@ -235,6 +235,8 @@ async function leaveSharedGroup(groupId){
 async function openSharedGroupDetail(groupId){
   viewingSharedGroup=groupId;
   sgTabFilter='all';
+  sgPeriodFilter='all';
+  sgCatFilter='vse';
   await loadSharedGroupDetail();
   renderLinks();
 }
@@ -264,17 +266,47 @@ function switchSgTab(userId,ev){
   renderSharedGroupDetail();
 }
 
+// ── Filtry detailu skupiny ─────────────────────────────────
+function getSgDateRange(){
+  const now=new Date();
+  if(sgPeriodFilter==='all') return null;
+  if(sgPeriodFilter==='vlastni'){
+    const f=document.getElementById('sg-from')?.value;
+    const t=document.getElementById('sg-to')?.value;
+    if(!f||!t) return null;
+    return {from:new Date(f+'T00:00:00'),to:new Date(t+'T23:59:59')};
+  }
+  const from=new Date(now);
+  if(sgPeriodFilter==='tyden'){const day=(now.getDay()||7);from.setDate(now.getDate()-day+1);from.setHours(0,0,0,0);}
+  else if(sgPeriodFilter==='mesic'){from.setDate(1);from.setHours(0,0,0,0);}
+  else if(sgPeriodFilter==='rok'){from.setMonth(0,1);from.setHours(0,0,0,0);}
+  const to=new Date(now);to.setHours(23,59,59,999);
+  return {from,to};
+}
+function setSgPeriod(p,btn){
+  sgPeriodFilter=p;
+  document.querySelectorAll('#sg-p-all,#sg-p-week,#sg-p-month,#sg-p-year,#sg-p-custom').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const wrap=document.getElementById('sg-custom-wrap');
+  if(wrap) wrap.style.display=p==='vlastni'?'flex':'none';
+  renderSharedGroupDetail();
+}
+function setSgCatFilter(val){
+  sgCatFilter=val;
+  renderSharedGroupDetail();
+}
+
 // ── Vyúčtování (kdo komu dluží) ───────────────────────────
-function calculateSettlement(){
-  if(!sgMembers.length||!sgTxns.length) return [];
+function calculateSettlement(txnList=sgTxns){
+  if(!sgMembers.length||!txnList.length) return [];
   const n=sgMembers.length;
-  const total=sgTxns.reduce((s,t)=>s+toCZK(Number(t.amount),t.currency),0);
+  const total=txnList.reduce((s,t)=>s+toCZK(Number(t.amount),t.currency),0);
   const perPerson=total/n;
 
   // Kolik kdo zaplatil
   const paid={};
   sgMembers.forEach(m=>paid[m.user_id]=0);
-  sgTxns.forEach(t=>{paid[t.user_id]=(paid[t.user_id]||0)+toCZK(Number(t.amount),t.currency);});
+  txnList.forEach(t=>{paid[t.user_id]=(paid[t.user_id]||0)+toCZK(Number(t.amount),t.currency);});
 
   // Bilance: kladná = přeplatil (ostatní mu dluží), záporná = dluží
   const balances=sgMembers.map(m=>({
@@ -487,8 +519,23 @@ function renderSharedGroupDetail(){
   // Filtrované transakce
   let txns=sgTabFilter==='all'?sgTxns:sgTxns.filter(t=>t.user_id===sgTabFilter);
 
-  // Souhrn + vyúčtování
-  const settlement=calculateSettlement();
+  // Filtr dle období
+  const sgRange=getSgDateRange();
+  if(sgRange) txns=txns.filter(t=>{const d=new Date(t.date+'T12:00:00');return d>=sgRange.from&&d<=sgRange.to;});
+
+  // Filtr dle kategorie
+  if(sgCatFilter!=='vse') txns=txns.filter(t=>t.category===sgCatFilter);
+
+  // Naplnit category select (z nefilt. transakcí skupiny)
+  const catSel=document.getElementById('sg-cat-filter');
+  if(catSel){
+    const cats=[...new Set(sgTxns.map(t=>t.category).filter(Boolean))].sort();
+    catSel.innerHTML='<option value="vse">Všechny kategorie</option>'+
+      cats.map(c=>`<option value="${escAttr(c)}"${sgCatFilter===c?' selected':''}>${escHtml(c)}</option>`).join('');
+  }
+
+  // Souhrn + vyúčtování (reaguje na filtry)
+  const settlement=calculateSettlement(txns);
   let summaryHtml='';
   if(settlement.balances){
     const parts=settlement.balances.map(b=>{
@@ -514,7 +561,7 @@ function renderSharedGroupDetail(){
           </div>`
         ).join('')}
       </div>`;
-    } else if(sgTxns.length){
+    } else if(txns.length){
       transfersHtml=`<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--card-border);font-size:12px;color:var(--green);text-align:center;">Vše je vyrovnáno ✓</div>`;
     }
 

@@ -73,6 +73,11 @@ recurring: {
   - [x] Opravit bug: otevreni modalniho okna "nova klasicka transakce" po predchozim otevreni "nova opakovana transakce" nespravne zobrazovalo modal opakovane transakce
     - Pricina: `recurringMode` zustavalo `true` jako globalni stav
     - Reseni: `openTxnModal(idx, recurring=false)` — novy parametr explicitne predava stav; `openRecurringTxnModal()` vola `openTxnModal(-1, true)`
+- Filtry v detailu sdílené skupiny (2026-03-27)
+  - [x] Filtr dle období (Vše/Týden/Měsíc/Rok/Vlastní) v detailu skupiny
+  - [x] Filtr dle kategorie (dropdown, generovaný z transakcí skupiny)
+  - [x] Souhrn (kdo kolik zaplatil) reaguje na aktivní filtry
+  - [x] Filtry se resetují při otevření jiné skupiny
 - Duplikovat transakci (2026-03-27)
   - [x] Tlačítko ⧉ v řádku transakce (desktop i mobil) — skryto u převodů
   - [x] `duplicateTxn(idx)` otevře modal předvyplněný daty (desc, typ, částka, měna, kat, účet, štítky), datum = dnešek

@@ -59,7 +59,7 @@ const CAT_ICONS=['🍽️','🏠','🚗','🎬','❤️','👕','💰','💼','�
 
 let editingCat=-1, selectedCatColor=CAT_COLORS[0], selectedCatIcon=CAT_ICONS[0];
 
-let myProfile=null, friendsList=[], sharedGroupsList=[], viewingSharedGroup=null, sgTxns=[], sgMembers=[], sgTabFilter='all';
+let myProfile=null, friendsList=[], sharedGroupsList=[], viewingSharedGroup=null, sgTxns=[], sgMembers=[], sgTabFilter='all', sgPeriodFilter='all', sgCatFilter='vse';
 const PROFILE_AVATARS=['👤','👩','👨','👧','👦','🧑','👵','👴','🐱','🐶','🏠','💼','🎭','⭐','🌈'];
 let selectedAvatar=PROFILE_AVATARS[0];
 

@@ -367,7 +367,24 @@
         </div>
       </div>
       <div id="sg-summary" style="margin-bottom:12px;"></div>
-      <div class="tabs" id="sg-detail-tabs" style="margin-bottom:12px;"></div>
+      <div class="tabs" id="sg-detail-tabs" style="margin-bottom:8px;"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
+        <div class="period-bar" style="gap:4px;">
+          <button class="period-btn active" id="sg-p-all"    onclick="setSgPeriod('all',this)">Vše</button>
+          <button class="period-btn"        id="sg-p-week"   onclick="setSgPeriod('tyden',this)">Týden</button>
+          <button class="period-btn"        id="sg-p-month"  onclick="setSgPeriod('mesic',this)">Měsíc</button>
+          <button class="period-btn"        id="sg-p-year"   onclick="setSgPeriod('rok',this)">Rok</button>
+          <button class="period-btn"        id="sg-p-custom" onclick="setSgPeriod('vlastni',this)">Vlastní</button>
+        </div>
+        <select id="sg-cat-filter" onchange="setSgCatFilter(this.value)" style="font-size:12px;padding:4px 8px;border-radius:8px;border:1px solid var(--card-border);background:var(--card-bg);color:var(--text-primary);">
+          <option value="vse">Všechny kategorie</option>
+        </select>
+      </div>
+      <div id="sg-custom-wrap" style="display:none;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
+        <input type="date" id="sg-from" onchange="renderSharedGroupDetail()" style="font-size:12px;padding:4px 8px;border-radius:8px;border:1px solid var(--card-border);background:var(--card-bg);color:var(--text-primary);">
+        <span style="font-size:12px;color:var(--text-secondary)">—</span>
+        <input type="date" id="sg-to" onchange="renderSharedGroupDetail()" style="font-size:12px;padding:4px 8px;border-radius:8px;border:1px solid var(--card-border);background:var(--card-bg);color:var(--text-primary);">
+      </div>
       <div id="sg-txn-list"></div>
     </div>
   </div>
