@@ -14,20 +14,27 @@ let dashPeriod='mesic', accPeriod='mesic', invPeriod='mesic';
 const RATES={CZK:1,EUR:25,USD:23};
 const toCZK=(amount,cur)=>amount*(RATES[cur]||1);
 
-// Aktualizace kurzů z ČNB API (volá se při startu)
+// Aktualizace kurzů (Frankfurter API — CORS ok, free, bez klíče)
+let _ratesFetched=false;
 async function fetchLiveRates(){
+  if(_ratesFetched) return;
+  const cacheKey='fx_rates_'+today();
+  const cached=localStorage.getItem(cacheKey);
+  if(cached){
+    try{const r=JSON.parse(cached);RATES.EUR=r.EUR;RATES.USD=r.USD;eurCzkRate=RATES.EUR;_ratesFetched=true;return;}catch(e){}
+  }
   try{
-    const r=await fetch('https://api.cnb.cz/cnbapi/exrates/daily?date='+today()+'&lang=EN',{signal:AbortSignal.timeout(6000)});
+    const r=await fetch('https://api.frankfurter.app/latest?from=CZK&to=EUR,USD',{signal:AbortSignal.timeout(6000)});
     if(!r.ok) throw new Error('HTTP '+r.status);
     const d=await r.json();
-    const eur=d.rates?.find(x=>x.currencyCode==='EUR');
-    const usd=d.rates?.find(x=>x.currencyCode==='USD');
-    if(eur) RATES.EUR=eur.rate/eur.amount;
-    if(usd) RATES.USD=usd.rate/usd.amount;
+    if(d.rates?.EUR) RATES.EUR=+(1/d.rates.EUR).toFixed(4);
+    if(d.rates?.USD) RATES.USD=+(1/d.rates.USD).toFixed(4);
     eurCzkRate=RATES.EUR;
-    console.log('Kurzy ČNB aktualizovány: EUR='+RATES.EUR.toFixed(3)+', USD='+RATES.USD.toFixed(3));
+    localStorage.setItem(cacheKey,JSON.stringify({EUR:RATES.EUR,USD:RATES.USD}));
+    _ratesFetched=true;
+    console.log('Kurzy aktualizovány: EUR='+RATES.EUR.toFixed(3)+', USD='+RATES.USD.toFixed(3));
   }catch(e){
-    console.warn('Nepodařilo se načíst kurzy z ČNB, použity fallback hodnoty.',e.message);
+    console.warn('Nepodařilo se načíst kurzy, použity fallback hodnoty.',e.message);
   }
 }
 const fmt=(n,cur='CZK')=>{
