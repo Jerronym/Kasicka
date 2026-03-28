@@ -6,7 +6,7 @@ function initCategories(){
 
 function getCatColor(name){
   const c=categories.find(c=>c.name===name);
-  return c?c.color:'#8b92a8';
+  return c?c.color:cssVar('--text-secondary');
 }
 function getCatIcon(name){
   const c=categories.find(c=>c.name===name);

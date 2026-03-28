@@ -384,7 +384,7 @@ function renderInvRow(inv, i, current){
       <div style="text-align:right;font-size:13px;font-weight:500;min-width:90px">${fmt(val)}</div>
       <div style="text-align:right;font-size:12px;min-width:70px;color:${p>=0?'var(--green)':'var(--red)'}">${p>=0?'+':''}${pp.toFixed(1)} %</div>
       <div style="display:flex;gap:5px;">
-        <button class="btn-edit" style="color:var(--amber);border-color:rgba(251,191,36,0.3)" onclick="openInvUpdateModal(${i})">↻</button>
+        <button class="btn-edit" style="color:var(--amber);border-color:color-mix(in srgb, var(--amber) 30%, transparent)" onclick="openInvUpdateModal(${i})">↻</button>
         <button class="btn-edit" onclick="openInvModal(${i})">Upravit</button>
       </div>
     </div>${histHtml}
@@ -410,7 +410,7 @@ function renderInvestments(){
       gc.style.display='block';
       let gh=`<div class="table-card"><div class="table-header" style="cursor:pointer;" onclick="toggleInvGroupsPanel()">
         <span class="table-title">Skupiny investic <span id="inv-grp-panel-arrow" style="font-size:11px;color:var(--text-secondary);">▼</span></span>
-        <button class="btn btn-sm btn-outline" style="border-color:rgba(167,139,250,0.4);color:var(--purple);" onclick="event.stopPropagation();openInvGroupModal(-1)">+ Přidat skupinu</button>
+        <button class="btn btn-sm btn-outline" style="border-color:color-mix(in srgb, var(--purple) 40%, transparent);color:var(--purple);" onclick="event.stopPropagation();openInvGroupModal(-1)">+ Přidat skupinu</button>
       </div>
       <div id="inv-grp-panel">`;
       invGroups.forEach((g,gi)=>{
@@ -560,7 +560,7 @@ function renderInvGroupFilter(){
   let html=`<span onclick="invGroupChartFilter=null;invChartFilter.clear();renderInvChart();" style="padding:4px 10px;border-radius:20px;font-size:12px;cursor:pointer;background:${allActive?'var(--accent-dim)':'var(--card-bg)'};border:1px solid ${allActive?'var(--accent)':'var(--card-border)'};color:${allActive?'var(--accent)':'var(--text-secondary)'};">Vše</span>`;
   html+=invGroups.map((g,i)=>{
     const active=invGroupChartFilter===i;
-    const col=g.color||'#4f8ef7';
+    const col=g.color||cssVar('--accent');
     return`<span onclick="invGroupChartFilter=${i};invChartFilter.clear();renderInvChart();" style="padding:4px 10px;border-radius:20px;font-size:12px;cursor:pointer;background:${active?col+'33':'var(--card-bg)'};border:1px solid ${active?col:'var(--card-border)'};color:${active?col:'var(--text-secondary)'};">${escHtml(g.name)}</span>`;
   }).join('');
   el.innerHTML=html;
@@ -742,8 +742,8 @@ async function renderInvChart(){
   }
 
   const datasets=[
-    {label:'Investovano',data:history.map(h=>h.invested),borderColor:'#4f8ef7',backgroundColor:'rgba(79,142,247,0.08)',borderWidth:2,pointRadius:0,pointHoverRadius:4,pointHoverBackgroundColor:'#4f8ef7',fill:false,tension:0.1},
-    {label:'Hodnota',data:history.map(h=>h.value),borderColor:'#34d399',backgroundColor:'rgba(52,211,153,0.08)',borderWidth:2,pointRadius:0,pointHoverRadius:4,pointHoverBackgroundColor:'#34d399',fill:false,tension:0.1,spanGaps:true},
+    {label:'Investovano',data:history.map(h=>h.invested),borderColor:cssVar('--accent'),backgroundColor:cssVarAlpha('--accent',0.08),borderWidth:2,pointRadius:0,pointHoverRadius:4,pointHoverBackgroundColor:cssVar('--accent'),fill:false,tension:0.1},
+    {label:'Hodnota',data:history.map(h=>h.value),borderColor:cssVar('--green'),backgroundColor:cssVarAlpha('--green',0.08),borderWidth:2,pointRadius:0,pointHoverRadius:4,pointHoverBackgroundColor:cssVar('--green'),fill:false,tension:0.1,spanGaps:true},
   ];
 
   if(showInflation){
@@ -753,13 +753,13 @@ async function renderInvChart(){
       datasets.push({
         label:'Min. hodnota (inflace)',
         data:inflLine,
-        borderColor:'#f87171',
+        borderColor:cssVar('--red'),
         backgroundColor:'transparent',
         borderWidth:2,
         borderDash:[5,4],
         pointRadius:0,
         pointHoverRadius:4,
-        pointHoverBackgroundColor:'#f87171',
+        pointHoverBackgroundColor:cssVar('--red'),
         fill:false,
         tension:0.1,
         spanGaps:true
@@ -767,7 +767,7 @@ async function renderInvChart(){
     }
   }
 
-  chartInv=new Chart(ctx,{type:'line',data:{labels:history.map(h=>h.label),datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>v.dataset.label+': '+(v.raw!=null?v.raw.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2}):'-')+' Kc'}}},scales:{x:{ticks:{color:'#8b92a8',font:{size:11},maxRotation:45,autoSkip:false,callback:(val,idx)=>{const d=history[idx]?.date;if(!d)return null;const dt=new Date(d+'T12:00:00');if(invPeriod==='tyden')return dt.toLocaleDateString('cs-CZ',{weekday:'short',day:'numeric',month:'numeric'});if(invPeriod==='mesic'){if(dt.getDay()!==1)return null;return dt.toLocaleDateString('cs-CZ',{day:'2-digit',month:'2-digit'});}if(!d.endsWith('-01'))return null;return dt.toLocaleDateString('cs-CZ',{month:'short',year:'2-digit'});}},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:'#8b92a8',font:{size:11},callback:v=>v.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})},grid:{color:'rgba(255,255,255,0.05)'}}}},});
+  chartInv=new Chart(ctx,{type:'line',data:{labels:history.map(h=>h.label),datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>v.dataset.label+': '+(v.raw!=null?v.raw.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2}):'-')+' Kc'}}},scales:{x:{ticks:{color:cssVar('--text-secondary'),font:{size:11},maxRotation:45,autoSkip:false,callback:(val,idx)=>{const d=history[idx]?.date;if(!d)return null;const dt=new Date(d+'T12:00:00');if(invPeriod==='tyden')return dt.toLocaleDateString('cs-CZ',{weekday:'short',day:'numeric',month:'numeric'});if(invPeriod==='mesic'){if(dt.getDay()!==1)return null;return dt.toLocaleDateString('cs-CZ',{day:'2-digit',month:'2-digit'});}if(!d.endsWith('-01'))return null;return dt.toLocaleDateString('cs-CZ',{month:'short',year:'2-digit'});}},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:cssVar('--text-secondary'),font:{size:11},callback:v=>v.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})},grid:{color:'rgba(255,255,255,0.05)'}}}},});
 }
 
 // ── Supabase server-side proxy (žádné CORS problémy) ─────

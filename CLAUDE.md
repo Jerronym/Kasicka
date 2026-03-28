@@ -60,3 +60,4 @@ Vlastnost primo na transakci: `recurring: {interval, nextDate, endDate, enabled,
 - Datovy format verze: `DATA_VERSION = 5` v storage.js, migrace v `applyImport()`
 - Po kazde zmene dat: volat `markDirty()` s relevatnimi sekcemi + `saveToStorage()`
 - Barevna temata: 5 temat (default, ocean, forest, sunset, cyberpunk) pres `data-theme` atribut na `<html>`. Preference v `localStorage('kasicka_theme')` — per-device, nesyncuje se do cloudu. CSS promenne v `style.css`, logika v `ui.js` (`setTheme`/`loadTheme`).
+- **Po kazde zmene vzdy commitnout a pushnout na GitHub** (`git push origin master`)

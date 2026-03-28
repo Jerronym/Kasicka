@@ -71,7 +71,7 @@ function openBudModal(idx){
   const del=document.getElementById('bud-delete-btn');
   selectedBudCats=[];
   selectedBudTags=[];
-  selectedBudColor='#4f8ef7';
+  selectedBudColor=cssVar('--accent');
   if(idx===-1){
     document.getElementById('bud-modal-title').textContent='Nový rozpočet';
     document.getElementById('bud-name').value='';
@@ -89,7 +89,7 @@ function openBudModal(idx){
     document.getElementById('bud-limit').value=b.budType==='cumulative'?'':b.limit;
     document.getElementById('bud-limit-cum').value=b.budType==='cumulative'?b.limit:'';
     document.getElementById('bud-period').value=b.period||'month';
-    selectedBudColor=b.color||'#4f8ef7';
+    selectedBudColor=b.color||cssVar('--accent');
     selectedBudCats=b.cats?[...b.cats]:[];
     selectedBudTags=b.trackTags?[...b.trackTags]:[];
     setBudType(b.budType||'periodic');

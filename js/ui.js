@@ -10,6 +10,7 @@ function setTheme(id){
   const m=document.getElementById('mobile-theme-select');
   if(s) s.value=id||'';
   if(m) m.value=id||'';
+  markDirty('dashboard','transactions','accounts','investments','budget');
 }
 function loadTheme(){setTheme(localStorage.getItem(THEME_LS_KEY)||'');}
 

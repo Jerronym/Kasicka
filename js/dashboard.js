@@ -126,9 +126,9 @@ function renderCategoryChart(){
   const rest=entries.slice(9);
   if(rest.length){const restSum=rest.reduce((s,e)=>s+e[1],0);top.push(['Ostatní',restSum]);}
   const getColor=cat=>{
-    if(cat==='Ostatní') return '#888';
+    if(cat==='Ostatní') return cssVar('--text-secondary');
     const c=categories.find(x=>x.name===cat);
-    return c?.color||'#4f8ef7';
+    return c?.color||cssVar('--accent');
   };
   const labels=top.map(e=>e[0]);
   const data=top.map(e=>Math.round(e[1]));
@@ -167,9 +167,9 @@ function renderIncomeCategoryChart(){
   const rest=entries.slice(9);
   if(rest.length){const restSum=rest.reduce((s,e)=>s+e[1],0);top.push(['Ostatní',restSum]);}
   const getColor=cat=>{
-    if(cat==='Ostatní') return '#888';
+    if(cat==='Ostatní') return cssVar('--text-secondary');
     const c=categories.find(x=>x.name===cat);
-    return c?.color||'#34d399';
+    return c?.color||cssVar('--green');
   };
   const labels=top.map(e=>e[0]);
   const data=top.map(e=>Math.round(e[1]));
@@ -204,10 +204,10 @@ function renderTrendChart(){
   chartTrend=new Chart(ctx,{
     type:'bar',
     data:{labels,datasets:[
-      {label:'Příjmy',data:incomeData,backgroundColor:'rgba(56,203,137,0.7)',borderColor:'rgba(56,203,137,1)',borderWidth:1},
-      {label:'Výdaje',data:expenseData,backgroundColor:'rgba(239,83,80,0.7)',borderColor:'rgba(239,83,80,1)',borderWidth:1}
+      {label:'Příjmy',data:incomeData,backgroundColor:cssVarAlpha('--green',0.7),borderColor:cssVar('--green'),borderWidth:1},
+      {label:'Výdaje',data:expenseData,backgroundColor:cssVarAlpha('--red',0.7),borderColor:cssVar('--red'),borderWidth:1}
     ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b92a8',font:{size:11}}},tooltip:{callbacks:{label:v=>` ${v.raw.toLocaleString('cs-CZ')} Kč`}}},scales:{x:{ticks:{color:'#8b92a8',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8b92a8',font:{size:10},callback:v=>v.toLocaleString('cs-CZ')},grid:{color:'rgba(255,255,255,0.04)'}}}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:cssVar('--text-secondary'),font:{size:11}}},tooltip:{callbacks:{label:v=>` ${v.raw.toLocaleString('cs-CZ')} Kč`}}},scales:{x:{ticks:{color:cssVar('--text-secondary'),font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:cssVar('--text-secondary'),font:{size:10},callback:v=>v.toLocaleString('cs-CZ')},grid:{color:'rgba(255,255,255,0.04)'}}}}
   });
 }
 
@@ -231,5 +231,5 @@ function renderBalanceChart(){
     const filtered=history.filter(h=>{const d=new Date((h.date||'2000-01-01')+'T12:00:00');return d>=range.from&&d<=range.to;});
     if(filtered.length>=1) history=filtered;
   }
-  chartBalance=new Chart(ctx,{type:'line',data:{labels:history.map(h=>h.label),datasets:[{label:'Majetek (Kč)',data:history.map(h=>h.value),borderColor:'#4f8ef7',backgroundColor:'rgba(79,142,247,0.08)',borderWidth:2,pointRadius:0,pointHoverRadius:4,pointBackgroundColor:'#4f8ef7',fill:true,tension:0.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>v.raw.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' Kč'}}},scales:{x:{ticks:{color:'#8b92a8',font:{size:11},maxRotation:45,autoSkip:true},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#8b92a8',font:{size:11},callback:v=>v.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})},grid:{color:'rgba(255,255,255,0.04)'}}}}});
+  chartBalance=new Chart(ctx,{type:'line',data:{labels:history.map(h=>h.label),datasets:[{label:'Majetek (Kč)',data:history.map(h=>h.value),borderColor:cssVar('--accent'),backgroundColor:cssVarAlpha('--accent',0.08),borderWidth:2,pointRadius:0,pointHoverRadius:4,pointBackgroundColor:cssVar('--accent'),fill:true,tension:0.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>v.raw.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' Kč'}}},scales:{x:{ticks:{color:cssVar('--text-secondary'),font:{size:11},maxRotation:45,autoSkip:true},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:cssVar('--text-secondary'),font:{size:11},callback:v=>v.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})},grid:{color:'rgba(255,255,255,0.04)'}}}}});
 }

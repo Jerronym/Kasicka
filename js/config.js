@@ -44,6 +44,10 @@ const fmt=(n,cur='CZK')=>{
 };
 const today=()=>new Date().toISOString().split('T')[0];
 
+// CSS proměnné pro Chart.js (neumí var() přímo)
+function cssVar(name){return getComputedStyle(document.documentElement).getPropertyValue(name).trim();}
+function cssVarAlpha(name,alpha){const hex=cssVar(name);const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return`rgba(${r},${g},${b},${alpha})`;}
+
 // Bezpečné escapování uživatelských dat proti XSS
 const escHtml=(s)=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const escAttr=(s)=>escHtml(s).replace(/'/g,'&#39;');
