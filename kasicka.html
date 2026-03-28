@@ -10,6 +10,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>(function(){var t=localStorage.getItem('kasicka_theme');if(t)document.documentElement.dataset.theme=t;})()</script>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -51,6 +52,16 @@
     <label class="nav-item" style="font-size:12px;cursor:pointer;"><span class="nav-icon" style="font-size:13px;">↓</span><span class="nav-label">Import JSON</span><input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)"></label>
     <button class="nav-item" onclick="saveToStorage()" style="font-size:12px;"><span class="nav-icon" style="font-size:13px;">💾</span><span class="nav-label">Uložit data</span></button>
     <div id="save-indicator" style="font-size:11px;color:var(--green);padding:4px 10px;display:none;"><span class="nav-label">✓ Uloženo</span></div>
+    <div style="padding:4px 10px;display:flex;align-items:center;gap:8px;">
+      <span style="font-size:13px;">🎨</span>
+      <select id="theme-select" onchange="setTheme(this.value)" class="nav-label" style="flex:1;background:var(--card-bg);color:var(--text-primary);border:1px solid var(--card-border);border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer;">
+        <option value="">Výchozí</option>
+        <option value="ocean">Ocean Depth</option>
+        <option value="forest">Forest</option>
+        <option value="sunset">Warm Sunset</option>
+        <option value="cyberpunk">Cyberpunk</option>
+      </select>
+    </div>
     <div id="user-info" style="display:none;margin-top:4px;">
       <span style="font-size:16px;">👤</span>
       <span id="user-email" class="nav-label"></span>
@@ -73,6 +84,16 @@
     <div class="mobile-menu-title">Více</div>
     <button class="mobile-menu-item" onclick="closeMobileMenu();showSection('categories')"><span>⊞</span> Kategorie</button>
     <button class="mobile-menu-item" onclick="closeMobileMenu();showSection('links')"><span>👥</span> Sdílení</button>
+    <div class="mobile-menu-item" style="gap:10px;">
+      <span>🎨</span>
+      <select id="mobile-theme-select" onchange="setTheme(this.value)" style="flex:1;background:var(--card-bg);color:var(--text-primary);border:1px solid var(--card-border);border-radius:6px;padding:6px 8px;font-size:13px;">
+        <option value="">Výchozí</option>
+        <option value="ocean">Ocean Depth</option>
+        <option value="forest">Forest</option>
+        <option value="sunset">Warm Sunset</option>
+        <option value="cyberpunk">Cyberpunk</option>
+      </select>
+    </div>
     <div class="mobile-menu-divider"></div>
     <button class="mobile-menu-item" onclick="closeMobileMenu();exportData()"><span>↑</span> Export JSON</button>
     <label class="mobile-menu-item" style="cursor:pointer;"><span>↓</span> Import JSON<input type="file" accept=".json" style="display:none" onchange="closeMobileMenu();importData(event)"></label>

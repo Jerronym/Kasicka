@@ -1,5 +1,18 @@
 // Kasička — UI utilities, navigace, periody, autocomplete
 
+// ── Theme přepínač ──────────────────────────────────
+const THEME_LS_KEY='kasicka_theme';
+function setTheme(id){
+  if(id) document.documentElement.dataset.theme=id;
+  else delete document.documentElement.dataset.theme;
+  localStorage.setItem(THEME_LS_KEY,id||'');
+  const s=document.getElementById('theme-select');
+  const m=document.getElementById('mobile-theme-select');
+  if(s) s.value=id||'';
+  if(m) m.value=id||'';
+}
+function loadTheme(){setTheme(localStorage.getItem(THEME_LS_KEY)||'');}
+
 // ── Toast notifikace ──────────────────────────────────
 // Typy: 'error' (červená), 'success' (zelená), 'warn' (žlutá), 'info' (modrá)
 const _TOAST_ICONS={error:'✕',success:'✓',warn:'⚠',info:'ℹ'};
@@ -22,7 +35,7 @@ function updateToggle(id){
   const track=document.getElementById(id+'-track');
   const thumb=document.getElementById(id+'-thumb');
   if(!track||!thumb) return;
-  track.style.background=cb.checked?'#4f8ef7':'rgba(255,255,255,0.15)';
+  track.style.background=cb.checked?'var(--accent)':'rgba(255,255,255,0.15)';
   thumb.style.left=cb.checked?'21px':'3px';
 }
 
@@ -421,3 +434,6 @@ document.addEventListener('click',e=>{
     if(l&&!l.contains(e.target)&&e.target.id!==id.replace('ac-',''))l.style.display='none';
   });
 });
+
+// Načti uložené téma a synchronizuj selecty
+loadTheme();
