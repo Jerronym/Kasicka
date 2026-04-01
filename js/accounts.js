@@ -132,11 +132,11 @@ function renderAccounts(){
       ondrop="accDrop(event,${i})"
       ondragend="accDragEnd(event)">
       <span class="drag-handle" title="Přetáhnout pro změnu pořadí">⠿</span>
-      <div class="account-icon" style="background:${excluded?'rgba(255,255,255,0.05)':'var(--accent-dim)'}">${accIcons[a.type]||'🏦'}</div>
+      <div class="account-icon" style="background:${excluded?'var(--hover-bg)':'var(--accent-dim)'}">${accIcons[a.type]||'🏦'}</div>
       <div style="flex:1;min-width:0;">
         <div class="account-name" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
           ${escHtml(a.name)}
-          ${excluded?`<span style="font-size:10px;padding:2px 6px;border-radius:10px;background:rgba(255,255,255,0.07);color:var(--text-secondary);white-space:nowrap">mimo majetek</span>`:''}
+          ${excluded?`<span style="font-size:10px;padding:2px 6px;border-radius:10px;background:var(--tag-bg);color:var(--text-secondary);white-space:nowrap">mimo majetek</span>`:''}
         </div>
         <div class="account-num">${accTypeLabels[a.type]||a.type}</div>
       </div>
@@ -215,5 +215,5 @@ function renderAccChart(){
     history=filterHistoryByPeriod(history, accPeriod, Math.round(currentVal*100)/100, 'acc');
   }
 
-  chartAcc=new Chart(ctx,{type:'line',data:{labels:history.map(h=>h.label),datasets:[{label:'Zůstatky (Kč)',data:history.map(h=>h.value),borderColor:cssVar('--accent'),backgroundColor:cssVarAlpha('--accent',0.1),borderWidth:2,pointRadius:0,pointHoverRadius:4,pointBackgroundColor:cssVar('--accent'),fill:true,tension:0.35}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>v.raw.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' Kč'}}},scales:{x:{ticks:{color:cssVar('--text-secondary'),font:{size:11},maxRotation:45,autoSkip:true},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:cssVar('--text-secondary'),font:{size:11},callback:v=>v.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})},grid:{color:'rgba(255,255,255,0.05)'}}}}});
+  chartAcc=new Chart(ctx,{type:'line',data:{labels:history.map(h=>h.label),datasets:[{label:'Zůstatky (Kč)',data:history.map(h=>h.value),borderColor:cssVar('--accent'),backgroundColor:cssVarAlpha('--accent',0.1),borderWidth:2,pointRadius:0,pointHoverRadius:4,pointBackgroundColor:cssVar('--accent'),fill:true,tension:0.35}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>v.raw.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' Kč'}}},scales:{x:{ticks:{color:cssVar('--text-secondary'),font:{size:11},maxRotation:45,autoSkip:true},grid:{color:cssVar('--border-subtle')}},y:{ticks:{color:cssVar('--text-secondary'),font:{size:11},callback:v=>v.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})},grid:{color:cssVar('--border-subtle')}}}}});
 }

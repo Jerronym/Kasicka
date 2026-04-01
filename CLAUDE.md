@@ -13,7 +13,7 @@ Zadny build, bundler, testy, ani package.json. Staci otevrit `kasicka.html` v pr
 ### Script loading order (kasicka.html, radky ~849-859)
 Soubory se nacitaji primo `<script src>` v presnem poradi — zavislosti jsou implicitni:
 1. **config.js** — globalni stav, konstanty, utility (escHtml, fmt, toCZK), dirty-flag system
-2. **ui.js** — modaly, navigace, toast, tema, theme prepinac (5 barevnych temat)
+2. **ui.js** — modaly, navigace, toast, tema, theme prepinac (6 barevnych temat)
 3. **categories.js** → 4. **sharing.js** → 5. **transactions.js** → 6. **accounts.js** → 7. **investments.js** → 8. **budget.js** → 9. **dashboard.js**
 10. **storage.js** — localStorage, JSON export/import, migrace dat
 11. **auth.js** — Supabase auth, cloud sync, app init
@@ -59,5 +59,5 @@ Vlastnost primo na transakci: `recurring: {interval, nextDate, endDate, enabled,
 - XSS ochrana: `escHtml()` / `escAttr()` pro **vsechny** uzivatelske vstupy v DOM
 - Datovy format verze: `DATA_VERSION = 5` v storage.js, migrace v `applyImport()`
 - Po kazde zmene dat: volat `markDirty()` s relevatnimi sekcemi + `saveToStorage()`
-- Barevna temata: 5 temat (default, ocean, forest, sunset, cyberpunk) pres `data-theme` atribut na `<html>`. Preference v `localStorage('kasicka_theme')` — per-device, nesyncuje se do cloudu. CSS promenne v `style.css`, logika v `ui.js` (`setTheme`/`loadTheme`).
+- Barevna temata: 6 temat (default, light, ocean, forest, sunset, cyberpunk) pres `data-theme` atribut na `<html>`. Preference v `localStorage('kasicka_theme')` — per-device, nesyncuje se do cloudu. CSS promenne v `style.css`, logika v `ui.js` (`setTheme`/`loadTheme`). Neutralni barvy (borders, hover, shadow) pouzivaji CSS promenne (`--border-subtle`, `--hover-bg`, `--tag-bg`, `--progress-bg`, `--toggle-off`, `--scrim`, `--shadow` atd.) — light theme je invertuje.
 - **Po kazde zmene vzdy commitnout a pushnout na GitHub** (`git push origin master`)

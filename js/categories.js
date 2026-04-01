@@ -31,7 +31,7 @@ function renderTagQuickPicks(){
     const active=currentTags.includes(tag);
     return`<span onclick="quickAddTag('${escAttr(tag)}')"
       style="padding:3px 9px;border-radius:20px;font-size:11.5px;cursor:pointer;user-select:none;
-      background:${active?'var(--accent-dim)':'rgba(255,255,255,0.05)'};
+      background:${active?'var(--accent-dim)':'var(--hover-bg)'};
       border:1px solid ${active?'var(--accent)':'var(--card-border)'};
       color:${active?'var(--accent)':'var(--text-secondary)'};">${escHtml(tag)}</span>`;
   }).join('');

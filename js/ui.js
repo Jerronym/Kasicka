@@ -36,7 +36,7 @@ function updateToggle(id){
   const track=document.getElementById(id+'-track');
   const thumb=document.getElementById(id+'-thumb');
   if(!track||!thumb) return;
-  track.style.background=cb.checked?'var(--accent)':'rgba(255,255,255,0.15)';
+  track.style.background=cb.checked?'var(--accent)':'var(--toggle-off)';
   thumb.style.left=cb.checked?'21px':'3px';
 }
 

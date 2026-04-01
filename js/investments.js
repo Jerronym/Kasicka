@@ -363,17 +363,17 @@ function renderInvRow(inv, i, current){
   const col=typeColors[inv.type]||'var(--text-secondary)';
   const hist=inv.history&&inv.history.length?[...inv.history].reverse():[];
   const histHtml=hist.length?`
-    <div style="border-top:1px solid rgba(255,255,255,0.05);margin-top:10px;padding-top:10px;">
+    <div style="border-top:1px solid var(--border-subtle);margin-top:10px;padding-top:10px;">
       <button onclick="toggleInvHist(${i})" style="background:none;border:none;color:var(--text-secondary);font-size:11.5px;cursor:pointer;padding:0;display:flex;align-items:center;gap:5px;margin-bottom:6px;width:100%;"><span id="inv-hist-arrow-${i}" style="font-size:10px;transition:transform 0.2s;">▶</span><span style="text-transform:uppercase;letter-spacing:0.4px">Historie aktualizací (${hist.length})</span></button>
       <div id="inv-hist-${i}" style="display:none;">${hist.map(h=>{
         const d=h.value-h.prevValue; const dp=h.prevValue?(d/h.prevValue*100):0;
-        return`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
+        return`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border-subtle);">
           <div><span style="font-size:12px;color:var(--text-secondary)">${h.date}</span>${h.note?`<span style="font-size:11.5px;color:var(--text-secondary);margin-left:8px;font-style:italic">${escHtml(h.note)}</span>`:''}</div>
           <div style="text-align:right"><span style="font-size:13px;font-weight:500">${fmt(h.value)}</span><span style="font-size:11.5px;margin-left:6px;color:${d>=0?'var(--green)':'var(--red)'}">${d>=0?'+':''}${dp.toFixed(1)} %</span></div>
         </div>`;
       }).join('')}</div>
     </div>`:'';
-  return`<div style="padding:12px 18px;border-bottom:1px solid rgba(255,255,255,0.04);">
+  return`<div style="padding:12px 18px;border-bottom:1px solid var(--border-subtle);">
     <div class="invest-row" style="padding:0;border:none;">
       <div style="min-width:60px">
         <div style="font-size:13px;font-weight:600;color:${col}">${escHtml(inv.ticker)}</div>
@@ -418,7 +418,7 @@ function renderInvestments(){
         const gVal=members.reduce((s,inv)=>s+getInvValue(investments.indexOf(inv)),0);
         const gInv=members.reduce((s,inv)=>s+inv.invested,0);
         const gPnl=gVal-gInv; const gPct=gInv?(gPnl/gInv*100):0;
-        gh+=`<div style="display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,0.04);">
+        gh+=`<div style="display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--border-subtle);">
           <div style="width:12px;height:12px;border-radius:3px;background:${g.color};flex-shrink:0;"></div>
           <div style="flex:1;min-width:0;">
             <div style="font-size:13.5px;font-weight:500;color:${g.color}">${escHtml(g.name)}</div>
@@ -767,7 +767,7 @@ async function renderInvChart(){
     }
   }
 
-  chartInv=new Chart(ctx,{type:'line',data:{labels:history.map(h=>h.label),datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>v.dataset.label+': '+(v.raw!=null?v.raw.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2}):'-')+' Kc'}}},scales:{x:{ticks:{color:cssVar('--text-secondary'),font:{size:11},maxRotation:45,autoSkip:false,callback:(val,idx)=>{const d=history[idx]?.date;if(!d)return null;const dt=new Date(d+'T12:00:00');if(invPeriod==='tyden')return dt.toLocaleDateString('cs-CZ',{weekday:'short',day:'numeric',month:'numeric'});if(invPeriod==='mesic'){if(dt.getDay()!==1)return null;return dt.toLocaleDateString('cs-CZ',{day:'2-digit',month:'2-digit'});}if(!d.endsWith('-01'))return null;return dt.toLocaleDateString('cs-CZ',{month:'short',year:'2-digit'});}},grid:{color:'rgba(255,255,255,0.05)'}},y:{ticks:{color:cssVar('--text-secondary'),font:{size:11},callback:v=>v.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})},grid:{color:'rgba(255,255,255,0.05)'}}}},});
+  chartInv=new Chart(ctx,{type:'line',data:{labels:history.map(h=>h.label),datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>v.dataset.label+': '+(v.raw!=null?v.raw.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2}):'-')+' Kc'}}},scales:{x:{ticks:{color:cssVar('--text-secondary'),font:{size:11},maxRotation:45,autoSkip:false,callback:(val,idx)=>{const d=history[idx]?.date;if(!d)return null;const dt=new Date(d+'T12:00:00');if(invPeriod==='tyden')return dt.toLocaleDateString('cs-CZ',{weekday:'short',day:'numeric',month:'numeric'});if(invPeriod==='mesic'){if(dt.getDay()!==1)return null;return dt.toLocaleDateString('cs-CZ',{day:'2-digit',month:'2-digit'});}if(!d.endsWith('-01'))return null;return dt.toLocaleDateString('cs-CZ',{month:'short',year:'2-digit'});}},grid:{color:cssVar('--border-subtle')}},y:{ticks:{color:cssVar('--text-secondary'),font:{size:11},callback:v=>v.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})},grid:{color:cssVar('--border-subtle')}}}},});
 }
 
 // ── Supabase server-side proxy (žádné CORS problémy) ─────
