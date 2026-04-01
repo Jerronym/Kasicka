@@ -233,6 +233,8 @@ function saveInv(){
   const groupIdx=grpVal!==''?parseInt(grpVal):undefined;
   const accVal=document.getElementById('inv-acc-select').value;
   const accIdx=accVal!==''?accVal:'';
+  if(!startDate){toast('Zadej datum nákupu.','warn');return;}
+  if(accVal===''){toast('Vyber účet.','warn');return;}
   if(!ticker){toast('Zadej název/ticker investice.','warn');return;}
 
   const isAuto=invMode==='auto';
@@ -245,6 +247,7 @@ function saveInv(){
   const value=isAuto
     ?(parseFloat(document.getElementById('inv-value').value)||0)
     :(parseFloat(document.getElementById('inv-value-m').value)||0);
+  if(!invested||invested<=0){toast('Zadej investovanou částku.','warn');return;}
   if(invested<0||value<0){toast('Investovaná částka a hodnota nemohou být záporné.','warn');return;}
 
   let invIdx;
