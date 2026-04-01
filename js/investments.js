@@ -12,6 +12,18 @@ function refreshInvGroupSelect(selectedVal){
   if(selectedVal!==undefined&&selectedVal!=='') sel.value=selectedVal;
 }
 
+function refreshInvAccSelect(selectedVal){
+  const sel=document.getElementById('inv-acc-select');
+  if(!sel) return;
+  sel.innerHTML='<option value="">— bez účtu —</option>';
+  accounts.forEach((a,i)=>{
+    const o=document.createElement('option');
+    o.value=i; o.textContent=a.name+' ('+a.currency+')';
+    sel.appendChild(o);
+  });
+  if(selectedVal!==undefined&&selectedVal!=='') sel.value=selectedVal;
+}
+
 function renderInvGroupColorPicker(){
   const el=document.getElementById('inv-group-color-picker');
   if(!el) return;
@@ -173,6 +185,7 @@ function openInvModal(idx){
   editingInv=idx;
   const del=document.getElementById('inv-delete-btn');
   refreshInvGroupSelect();
+  refreshInvAccSelect();
   if(idx===-1){
     document.getElementById('inv-modal-title').textContent='Nová investice';
     document.getElementById('inv-ticker').value='';
@@ -187,6 +200,7 @@ function openInvModal(idx){
     document.getElementById('inv-type').value='Akcie';
     document.getElementById('inv-start-date').value='';
     document.getElementById('inv-group-select').value='';
+    document.getElementById('inv-acc-select').value='';
     del.style.display='none';
     setInvMode('auto');
   } else {
@@ -204,6 +218,7 @@ function openInvModal(idx){
     document.getElementById('inv-type').value=inv.type;
     document.getElementById('inv-start-date').value=inv.startDate||'';
     refreshInvGroupSelect(inv.groupIdx!==undefined?String(inv.groupIdx):'');
+    refreshInvAccSelect(inv.accIdx!==undefined&&inv.accIdx!==''?String(inv.accIdx):'');
     del.style.display='block';
     setInvMode(inv.apiSymbol?'auto':'manual');
   }
@@ -216,6 +231,8 @@ function saveInv(){
   const startDate=document.getElementById('inv-start-date').value||'';
   const grpVal=document.getElementById('inv-group-select').value;
   const groupIdx=grpVal!==''?parseInt(grpVal):undefined;
+  const accVal=document.getElementById('inv-acc-select').value;
+  const accIdx=accVal!==''?accVal:'';
   if(!ticker){toast('Zadej název/ticker investice.','warn');return;}
 
   const isAuto=invMode==='auto';
@@ -233,10 +250,10 @@ function saveInv(){
   let invIdx;
   if(editingInv===-1){
     const initHistory=(!apiSymbol&&startDate)?[{date:startDate,value,prevValue:value,note:'Počáteční hodnota'}]:[];
-    investments.push({ticker,apiSymbol,shares,type,invested,value,startDate,history:initHistory,groupIdx});
+    investments.push({ticker,apiSymbol,shares,type,invested,value,startDate,history:initHistory,groupIdx,accIdx});
     invIdx=investments.length-1;
   } else {
-    investments[editingInv]={...investments[editingInv],ticker,apiSymbol,shares,type,invested,value,startDate,groupIdx};
+    investments[editingInv]={...investments[editingInv],ticker,apiSymbol,shares,type,invested,value,startDate,groupIdx,accIdx};
     invIdx=editingInv;
   }
   recordInvSnapshot();

@@ -135,6 +135,7 @@ function buildExportPayload(){
       startDate:     i.startDate||'',
       history:       i.history||[],
       groupIdx:      i.groupIdx,
+      accIdx:        i.accIdx||'',
     })),
     budgets: budgets.map(b=>({
       name:      b.name||'',
