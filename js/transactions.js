@@ -505,7 +505,7 @@ function renderTagFilterBar(){
   if(!all.length){chips.innerHTML='<span style="font-size:12px;color:var(--text-secondary);font-style:italic">žádné štítky</span>';return;}
   chips.innerHTML=all.map(tag=>{
     const active=activeTagFilter===tag;
-    return`<span class="tag-badge${active?' active-tag-filter':''}" style="cursor:pointer;${active?'':''}padding:4px 10px;font-size:12px;" onclick="toggleTagFilter('${escAttr(tag)}')">${escHtml(tag)}</span>`;
+    return`<span class="tag-badge${active?' active-tag-filter':''}" style="cursor:pointer;${active?'':''}padding:4px 10px;font-size:12px;" onclick="toggleTagFilter('${escAttr(tag)}')">${escHtml(tag)}<span onclick="event.stopPropagation();deleteTag('${escAttr(tag)}')" style="margin-left:5px;cursor:pointer;opacity:0.5;font-size:11px;" title="Smazat štítek ze všech transakcí">✕</span></span>`;
   }).join('');
 }
 
@@ -516,6 +516,28 @@ function toggleTagFilter(tag){
   renderTagFilterBar();
   renderTagStats();
   renderTxns();
+}
+
+function deleteTag(tag){
+  const tmp=document.createElement('span');tmp.innerHTML=tag;tag=tmp.textContent;
+  const count=transactions.filter(t=>(Array.isArray(t.tags)?t.tags:[]).includes(tag)).length;
+  if(!confirm(`Smazat štítek "${tag}" ze všech transakcí (${count})? Toto nelze vrátit.`)) return;
+  transactions.forEach(t=>{
+    if(Array.isArray(t.tags)){
+      const idx=t.tags.indexOf(tag);
+      if(idx!==-1) t.tags.splice(idx,1);
+    }
+  });
+  budgets.forEach(b=>{
+    if(b.trackTags&&b.trackTags.length){
+      const idx=b.trackTags.indexOf(tag);
+      if(idx!==-1) b.trackTags.splice(idx,1);
+    }
+  });
+  if(activeTagFilter===tag) activeTagFilter=null;
+  markDirty('transactions','budget','dashboard');
+  saveToStorage();
+  toast('Štítek smazán.','success');
 }
 
 function clearTagFilter(){
