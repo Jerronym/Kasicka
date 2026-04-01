@@ -255,6 +255,15 @@ function saveInv(){
     const initHistory=(!apiSymbol&&startDate)?[{date:startDate,value,prevValue:value,note:'Počáteční hodnota'}]:[];
     investments.push({ticker,apiSymbol,shares,type,invested,value,startDate,history:initHistory,groupIdx,accIdx});
     invIdx=investments.length-1;
+    // Vytvoř transakci — odečti investovanou částku z účtu
+    if(accIdx!==''){
+      const acc=accounts[parseInt(accIdx)];
+      if(acc){
+        const txnAmount=acc.currency==='CZK'?invested:(RATES[acc.currency]?invested/RATES[acc.currency]:invested);
+        transactions.unshift({desc:'Investice → '+ticker,amount:txnAmount,date:startDate,type:'vydaj',cat:'INVESTICE',cur:acc.currency,accIdx:String(accIdx),invIdx:String(invIdx)});
+        recordSnapshot();
+      }
+    }
   } else {
     investments[editingInv]={...investments[editingInv],ticker,apiSymbol,shares,type,invested,value,startDate,groupIdx,accIdx};
     invIdx=editingInv;
@@ -262,7 +271,7 @@ function saveInv(){
   recordInvSnapshot();
   saveToStorage();
   closeModal('inv');
-  markDirty('investments','dashboard');
+  markDirty('investments','dashboard','accounts','transactions');
   // Pokud má symbol + počet kusů + datum → automaticky načteme historii z API
   if(apiSymbol&&shares&&startDate){
     const btn=document.getElementById('btn-auto-update');
