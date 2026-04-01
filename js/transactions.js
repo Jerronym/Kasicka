@@ -155,6 +155,8 @@ async function saveTxn(){
   const accIdx=document.getElementById('txn-acc-select').value;
   const sharedGroupId=document.getElementById('txn-shared-group').value||'';
   if(isNaN(amount)||amount<=0){toast('Zadej platnou částku.','warn');return;}
+  if(!cat){toast('Vyber kategorii.','warn');return;}
+  if(!accIdx){toast('Vyber účet.','warn');return;}
   // Recurring pole
   const isRecurring=recurringMode||(editingTxn!==-1&&transactions[editingTxn]?.recurring);
   let recurringObj=null;
