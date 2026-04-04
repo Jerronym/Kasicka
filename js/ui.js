@@ -428,6 +428,36 @@ function handleAcKey(ev, inputId, listId){
   else if(ev.key==='Escape'){list.style.display='none';}
 }
 
+// Potvrzovací dialog — vrací Promise<boolean>
+function confirmDialog(message){
+  return new Promise(resolve=>{
+    const overlay=document.createElement('div');
+    overlay.style.cssText='display:flex;position:fixed;inset:0;background:var(--scrim);align-items:center;justify-content:center;z-index:200;';
+    const box=document.createElement('div');
+    box.style.cssText='background:var(--sidebar-bg);border:1px solid var(--card-border);border-radius:16px;padding:24px;width:380px;max-width:96vw;text-align:center;';
+    const msg=document.createElement('p');
+    msg.style.cssText='font-size:14px;color:var(--text-primary);margin-bottom:20px;line-height:1.5;';
+    msg.textContent=message;
+    const btnRow=document.createElement('div');
+    btnRow.style.cssText='display:flex;gap:10px;justify-content:center;';
+    const btnYes=document.createElement('button');
+    btnYes.className='btn-main';
+    btnYes.textContent='Ano';
+    btnYes.style.cssText='padding:8px 24px;border-radius:8px;cursor:pointer;';
+    const btnNo=document.createElement('button');
+    btnNo.textContent='Ne';
+    btnNo.style.cssText='padding:8px 24px;border-radius:8px;cursor:pointer;background:var(--card-bg);border:1px solid var(--card-border);color:var(--text-primary);';
+    btnRow.append(btnYes,btnNo);
+    box.append(msg,btnRow);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    const close=(val)=>{overlay.remove();resolve(val);};
+    btnYes.addEventListener('click',()=>close(true));
+    btnNo.addEventListener('click',()=>close(false));
+    overlay.addEventListener('click',e=>{if(e.target===overlay)close(false);});
+  });
+}
+
 // Zavři autocomplete při kliknutí mimo
 document.addEventListener('click',e=>{
   ['ac-txn-desc','ac-tr-note'].forEach(id=>{

@@ -14,7 +14,7 @@ function openAccModal(idx){
     document.getElementById('acc-balance').value='';
     document.getElementById('acc-currency').value='CZK';
     document.getElementById('acc-type').value='bank';
-    document.getElementById('acc-start-date').value='';
+    document.getElementById('acc-start-date').value=today();
     setToggle(true);
     del.style.display='none';
   } else {
@@ -40,6 +40,7 @@ function saveAcc(){
   const includeInTotal=document.getElementById('acc-include').checked;
   const startDate=document.getElementById('acc-start-date').value||'';
   if(!name){toast('Zadej název účtu.','warn');return;}
+  if(!startDate){toast('Zadej datum počátečního zůstatku.','warn');return;}
   if(rawBalance!==''&&isNaN(desiredBalance)){toast('Zadej platný zůstatek.','warn');return;}
   const balance=isNaN(desiredBalance)?0:desiredBalance;
   if(editingAcc===-1){

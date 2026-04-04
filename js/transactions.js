@@ -181,6 +181,14 @@ async function saveTxn(){
   }
   recurringMode=false;
 
+  // Kontrola: transakce před počátečním datem účtu
+  const acc=accounts[parseInt(accIdx)];
+  if(acc&&acc.startDate&&date<acc.startDate){
+    const ok=await confirmDialog('Transakce ('+new Date(date+'T12:00:00').toLocaleDateString('cs-CZ')+') je před počátečním datem účtu „'+acc.name+'" ('+new Date(acc.startDate+'T12:00:00').toLocaleDateString('cs-CZ')+').\nPosunout počáteční datum účtu?');
+    if(!ok) return;
+    acc.startDate=date;
+  }
+
   if(editingTxn===-1){
     const txnObj={desc,tags,amount,date,type,cat,cur,accIdx};
     if(recurringObj) txnObj.recurring=recurringObj;
@@ -297,7 +305,7 @@ async function deleteSharedTxnForLocal(txn){
   }
 }
 
-function saveTransfer(){
+async function saveTransfer(){
   const fi=document.getElementById('tr-from').value;
   const ti=document.getElementById('tr-to').value;
   const amount=parseFloat(document.getElementById('tr-amount').value);
@@ -308,6 +316,14 @@ function saveTransfer(){
   if(isNaN(amount)||amount<=0){toast('Zadej platnou částku.','warn');return;}
   if(!date){toast('Zadej datum.','warn');return;}
   const from=accounts[fi],to=accounts[ti];
+  // Kontrola: převod před počátečním datem účtu
+  const earlyAccs=[from,to].filter(a=>a&&a.startDate&&date<a.startDate);
+  if(earlyAccs.length){
+    const names=earlyAccs.map(a=>'„'+a.name+'" ('+new Date(a.startDate+'T12:00:00').toLocaleDateString('cs-CZ')+')').join(', ');
+    const ok=await confirmDialog('Převod ('+new Date(date+'T12:00:00').toLocaleDateString('cs-CZ')+') je před počátečním datem účtu '+names+'.\nPosunout počáteční datum?');
+    if(!ok) return;
+    earlyAccs.forEach(a=>{a.startDate=date;});
+  }
   const rate=RATES[from.currency]/RATES[to.currency];
   const converted=amount*rate;
   transactions.unshift({desc:note+' ('+from.name+' → '+to.name+')',amount,date,type:'prevod',cat:'Převod',cur:from.currency,accIdx:fi,toAccIdx:ti,convertedAmount:converted,toCur:to.currency});
