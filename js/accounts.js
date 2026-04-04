@@ -68,7 +68,7 @@ function deleteAcc(){
     }
     if(t.toAccIdx!=null&&t.toAccIdx!==''){
       const ti=parseInt(t.toAccIdx);
-      if(ti===delIdx) t.toAccIdx=null;
+      if(ti===delIdx) t.toAccIdx='';
       else if(ti>delIdx) t.toAccIdx=String(ti-1);
     }
   });

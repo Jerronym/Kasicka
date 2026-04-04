@@ -106,7 +106,7 @@ function buildExportPayload(){
       cat:        t.cat||'OSTATNÍ',
       cur:        t.cur||'CZK',
       accIdx:     t.accIdx||'',
-      toAccIdx:   t.toAccIdx||null,
+      toAccIdx:   t.toAccIdx||'',
       convertedAmount: t.convertedAmount||null,
       toCur:      t.toCur||null,
       invIdx:     t.invIdx!=null?String(t.invIdx):null,
@@ -241,7 +241,7 @@ function migrateImport(d){
 
 function applyImport(d){
   d=migrateImport(d);
-  transactions=  (d.transactions||[]).map(t=>({...t, tags:Array.isArray(t.tags)?t.tags:[]}));
+  transactions=  (d.transactions||[]).map(t=>({...t, tags:Array.isArray(t.tags)?t.tags:[], accIdx:t.accIdx||'', toAccIdx:t.toAccIdx||''}));
   accounts=      (d.accounts||[]).map(a=>({name:'',initialBalance:0,currency:'CZK',type:'bank',...a}));
   investments=   (d.investments||[]).map(i=>({ticker:'',type:'Akcie',invested:0,value:0,history:[],...i}));
   invGroups=     (d.invGroups||[]).map(g=>({name:'',color:'#a78bfa',note:'',...g}));
@@ -263,6 +263,29 @@ function exportData(){
   URL.revokeObjectURL(url);
 }
 
+function validateImportData(d){
+  if(typeof d!=='object'||d===null||Array.isArray(d)) return 'Soubor neobsahuje platný objekt.';
+  const arrays=['transactions','accounts','investments','budgets','categories'];
+  for(const key of arrays){
+    if(d[key]!==undefined&&!Array.isArray(d[key])) return 'Pole "'+key+'" musí být seznam.';
+  }
+  if(d.transactions){
+    for(let i=0;i<d.transactions.length;i++){
+      const t=d.transactions[i];
+      if(typeof t!=='object'||t===null) return 'Transakce #'+(i+1)+' není platný objekt.';
+      if(t.amount!==undefined&&typeof t.amount!=='number') return 'Transakce #'+(i+1)+' má neplatnou částku.';
+    }
+  }
+  if(d.accounts){
+    for(let i=0;i<d.accounts.length;i++){
+      const a=d.accounts[i];
+      if(typeof a!=='object'||a===null) return 'Účet #'+(i+1)+' není platný objekt.';
+      if(a.name!==undefined&&typeof a.name!=='string') return 'Účet #'+(i+1)+' má neplatný název.';
+    }
+  }
+  return null;
+}
+
 function importData(ev){
   const file=ev.target.files[0];
   if(!file) return;
@@ -270,6 +293,8 @@ function importData(ev){
   reader.onload=e=>{
     try{
       const d=JSON.parse(e.target.result);
+      const err=validateImportData(d);
+      if(err){toast('Neplatný soubor: '+err,'error');return;}
       if(!confirm('Importovat data? Aktuální data budou nahrazena.')) return;
       applyImport(d);
       saveToStorage();

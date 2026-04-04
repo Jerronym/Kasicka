@@ -54,10 +54,11 @@ async function authSignOut(){
 
 async function loadFromCloud(){
   if(!currentUser) return;
-  const {data,error}=await supa.from('user_data').select('data').eq('user_id',currentUser.id).single();
+  const {data,error}=await supa.from('user_data').select('data,updated_at').eq('user_id',currentUser.id).single();
   if(error&&error.code!=='PGRST116') return; // PGRST116 = no rows
   if(data?.data){
     applyImport(data.data);
+    _lastCloudSave=data.updated_at||null;
   } else {
     // Nový uživatel — začni s prázdnými daty
     applyImport({});
@@ -80,15 +81,31 @@ async function loadFromCloud(){
   await loadSharedData();
 }
 
+let _lastCloudSave=null; // timestamp posledního uložení do cloudu
+
 async function saveToCloud(){
   if(!currentUser) return;
+  // Detekce konfliktu: zkontroluj, zda jiné zařízení neuložilo novější data
+  if(_lastCloudSave){
+    try{
+      const {data:row}=await supa.from('user_data').select('updated_at').eq('user_id',currentUser.id).single();
+      if(row&&row.updated_at&&row.updated_at>_lastCloudSave){
+        const ok=await confirmDialog('Data v cloudu byla změněna z jiného zařízení.\nPřepsat cloudová data lokálními?');
+        if(!ok){
+          toast('Uložení do cloudu přeskočeno. Načti znovu pro synchronizaci.','warn');
+          return;
+        }
+      }
+    }catch(e){/* pokud kontrola selže, pokračuj v uložení */}
+  }
   const payload=buildExportPayload();
-  // Upsert — vytvoří nebo aktualizuje
+  const now=new Date().toISOString();
   await supa.from('user_data').upsert({
     user_id:currentUser.id,
     data:payload,
-    updated_at:new Date().toISOString()
+    updated_at:now
   },{onConflict:'user_id'});
+  _lastCloudSave=now;
 }
 
 function showApp(user){

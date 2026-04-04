@@ -14,7 +14,7 @@ function openTxnModal(idx, recurring=false){
     document.getElementById('txn-amount').value='';
     document.getElementById('txn-type').value='vydaj';
     document.getElementById('txn-currency').value='CZK';
-    document.getElementById('txn-cat').value='Jídlo';
+    document.getElementById('txn-cat').value=categories.length?categories[0].name:'JÍDLO';
     del.style.display='none';
   } else {
     const t=transactions[idx];
@@ -804,15 +804,32 @@ function openRecurringTxnModal(){
 function processRecurringTxns(){
   const td=today();
   let generated=0;
+  const MAX_ITER=365; // bezpečnostní limit proti nekonečné smyčce
+  // Deduplikační set: klíč = desc|amount|date|accIdx
+  const existing=new Set(
+    transactions.filter(t=>t.recurringGenerated).map(t=>t.desc+'|'+t.amount+'|'+t.date+'|'+t.accIdx)
+  );
   transactions.forEach(t=>{
     if(!t.recurring||!t.recurring.enabled||!t.recurring.nextDate) return;
-    while(t.recurring.nextDate<=td){
+    let iter=0;
+    while(t.recurring.nextDate<=td&&iter<MAX_ITER){
+      iter++;
       if(t.recurring.endDate&&t.recurring.nextDate>t.recurring.endDate){t.recurring.enabled=false;break;}
-      // Vytvoř kopii (normální transakce bez recurring pole)
-      const copy={desc:t.desc,tags:t.tags?[...t.tags]:[],amount:t.amount,date:t.recurring.nextDate,type:t.type,cat:t.cat,cur:t.cur,accIdx:t.accIdx,recurringGenerated:true};
-      transactions.unshift(copy);
+      const key=t.desc+'|'+t.amount+'|'+t.recurring.nextDate+'|'+t.accIdx;
+      if(!existing.has(key)){
+        // Vytvoř kopii (normální transakce bez recurring pole)
+        const copy={desc:t.desc,tags:t.tags?[...t.tags]:[],amount:t.amount,date:t.recurring.nextDate,type:t.type,cat:t.cat,cur:t.cur,accIdx:t.accIdx,recurringGenerated:true};
+        // Zachovat pole převodu pokud jde o opakující se převod
+        if(t.type==='prevod'){
+          if(t.toAccIdx!=null&&t.toAccIdx!=='') copy.toAccIdx=t.toAccIdx;
+          if(t.convertedAmount!=null) copy.convertedAmount=t.convertedAmount;
+          if(t.toCur) copy.toCur=t.toCur;
+        }
+        transactions.unshift(copy);
+        existing.add(key);
+        generated++;
+      }
       t.recurring.nextDate=advanceDate(t.recurring.nextDate, t.recurring.interval, t.recurring.dayOfMonth);
-      generated++;
     }
   });
   if(generated){
