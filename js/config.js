@@ -114,8 +114,7 @@ const INFLATION_CZ={
 
 let eurCzkRate=25; // fallback
 
-// Twelve Data API (free tier: 800 req/den, 8/min)
-const TWELVE_DATA_KEY='7391472785a349ad98520bc0efdec7b7';
+// Twelve Data API — klíč přesunut na server (Supabase Edge proxy)
 
 // ── Supabase ───────────────────────────────────────────────
 const SUPA_URL='https://bjjpaympgilbkzmhmdcy.supabase.co';
@@ -129,7 +128,7 @@ let saveTimer=null;
 // ── Dirty-flag systém pro výkon ─────────────────────────
 // Místo kaskády renderTxns();renderAccounts();renderDashboard();renderInvestments();
 // se označí co je "dirty" a renderuje se jen viditelná sekce.
-const _dirty={dashboard:false,transactions:false,accounts:false,investments:false,budget:false,categories:false,links:false};
+const _dirty={dashboard:false,transactions:false,accounts:false,investments:false,budget:false,categories:false,links:false,'links-group':false};
 let _activeSection='dashboard';
 let _renderRAF=null;
 
@@ -156,4 +155,51 @@ function _renderVisible(){
   else if(s==='budget') renderBudget();
   else if(s==='categories' && typeof renderCategories==='function') renderCategories();
   else if(s==='links' && typeof renderLinks==='function') renderLinks();
+  else if(s==='links-group' && typeof renderSharedGroupDetail==='function') renderSharedGroupDetail();
+}
+
+// ── Sdílený výpočet rozpočtu (budget.js + dashboard.js) ────
+function calcBudgetSpent(b, range){
+  const matchTxn=t=>{
+    if(b.trackMode==='tags'){
+      const tags=b.trackTags&&b.trackTags.length?b.trackTags:[];
+      if(!tags.length) return false;
+      const txnTags=Array.isArray(t.tags)?t.tags:(t.tag?[t.tag]:[]);
+      return tags.some(tag=>txnTags.includes(tag));
+    } else {
+      const cats=b.cats&&b.cats.length?b.cats:[b.name];
+      return cats.includes(t.cat);
+    }
+  };
+  const net=b.flowMode==='net';
+  const list=transactions.filter(t=>{
+    if(!matchTxn(t)) return false;
+    if(t.type==='prevod') return false;
+    if(!net&&t.type!=='vydaj') return false;
+    if(range){const d=new Date(t.date+'T12:00:00');return d>=range.from&&d<=range.to;}
+    return true;
+  });
+  const out=list.filter(t=>t.type==='vydaj').reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
+  if(!net) return out;
+  const inc=list.filter(t=>t.type==='prijem').reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
+  return out-inc;
+}
+
+// ── Loading indikátor ──────────────────────────────────────
+function showLoading(msg){
+  msg=msg||'Načítání...';
+  let el=document.getElementById('global-loading');
+  if(!el){
+    el=document.createElement('div');
+    el.id='global-loading';
+    el.style.cssText='position:fixed;inset:0;background:var(--scrim);display:flex;align-items:center;justify-content:center;z-index:300;';
+    el.innerHTML='<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:24px 36px;text-align:center;"><div class="loading-spinner"></div><div style="margin-top:12px;font-size:13px;color:var(--text-secondary)"></div></div>';
+    document.body.appendChild(el);
+  }
+  el.querySelector('div > div:last-child').textContent=msg;
+  el.style.display='flex';
+}
+function hideLoading(){
+  const el=document.getElementById('global-loading');
+  if(el) el.style.display='none';
 }

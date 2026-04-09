@@ -6,6 +6,7 @@ async function loadSharedData(){
   await loadMyProfile();
   await loadFriends();
   await loadSharedGroups();
+  renderSidebarGroups();
 }
 
 async function loadMyProfile(){
@@ -177,7 +178,9 @@ async function saveSharedGroup(){
   const selectedFriends=[...document.querySelectorAll('#cg-friends-picker input:checked')].map(cb=>cb.value);
 
   if(_editingGroupId){
-    // Editace existující skupiny
+    // Editace existující skupiny — ověření vlastnictví
+    const g=sharedGroupsList.find(gr=>gr.id===_editingGroupId);
+    if(g&&g.created_by!==currentUser?.id){toast('Nemáš oprávnění upravit tuto skupinu.','warn');return;}
     const {error}=await supa.from('shared_groups').update({name}).eq('id',_editingGroupId);
     if(error){toast('Chyba při úpravě skupiny: '+error.message,'error');return;}
 
@@ -210,16 +213,20 @@ async function saveSharedGroup(){
   _editingGroupId=null;
   closeModal('creategroup');
   await loadSharedGroups();
+  renderSidebarGroups();
   renderLinks();
 }
 
 async function deleteSharedGroup(groupId){
+  const g=sharedGroupsList.find(gr=>gr.id===groupId);
+  if(g&&g.created_by!==currentUser?.id){toast('Nemáš oprávnění smazat tuto skupinu.','warn');return;}
   if(!confirm('Opravdu smazat tuto skupinu? Všechny sdílené transakce budou smazány.')) return;
   await supa.from('shared_groups').delete().eq('id',groupId);
   viewingSharedGroup=null;
   toast('Skupina smazána','info');
   await loadSharedGroups();
-  renderLinks();
+  renderSidebarGroups();
+  showSection('links');
 }
 
 async function leaveSharedGroup(groupId){
@@ -228,17 +235,19 @@ async function leaveSharedGroup(groupId){
   viewingSharedGroup=null;
   toast('Opustil jsi skupinu','info');
   await loadSharedGroups();
-  renderLinks();
+  renderSidebarGroups();
+  showSection('links');
 }
 
 // ── Detail sdílené skupiny ─────────────────────────────────
-async function openSharedGroupDetail(groupId){
+async function openSharedGroupPage(groupId){
   viewingSharedGroup=groupId;
   sgTabFilter='all';
   sgPeriodFilter='all';
   sgCatFilter='vse';
-  await loadSharedGroupDetail();
-  renderLinks();
+  showLoading('Načítání skupiny...');
+  try{await loadSharedGroupDetail();}finally{hideLoading();}
+  showSection('links-group');
 }
 
 async function loadSharedGroupDetail(){
@@ -256,7 +265,7 @@ async function loadSharedGroupDetail(){
 
 function closeSharedGroupDetail(){
   viewingSharedGroup=null;
-  renderLinks();
+  showSection('links');
 }
 
 function switchSgTab(userId,ev){
@@ -375,6 +384,8 @@ async function saveSharedTxn(){
   if(!viewingSharedGroup||!currentUser) return;
 
   if(_editingSharedTxnId){
+    const existing=sgTxns.find(t=>t.id===_editingSharedTxnId);
+    if(existing&&existing.user_id!==currentUser?.id){toast('Můžeš upravit jen své výdaje.','warn');return;}
     const {error}=await supa.from('shared_transactions').update({
       amount, currency, category:category||'Ostatní', description, date
     }).eq('id',_editingSharedTxnId);
@@ -396,6 +407,9 @@ async function saveSharedTxn(){
 }
 
 async function deleteSharedTxn(txnId){
+  const t=sgTxns.find(tx=>tx.id===txnId);
+  const g=sharedGroupsList.find(gr=>gr.id===viewingSharedGroup);
+  if(t&&t.user_id!==currentUser?.id&&g?.created_by!==currentUser?.id){toast('Nemáš oprávnění smazat tento výdaj.','warn');return;}
   if(!confirm('Opravdu smazat tento sdílený výdaj?')) return;
   await supa.from('shared_transactions').delete().eq('id',txnId);
   await loadSharedGroupDetail();
@@ -472,19 +486,10 @@ function renderLinks(){
 
   // Sdílené skupiny
   const groupsEl=document.getElementById('shared-groups-list');
-  const detailEl=document.getElementById('shared-group-detail');
-  if(viewingSharedGroup){
-    groupsEl.parentElement.style.display='none';
-    detailEl.style.display='block';
-    renderSharedGroupDetail();
-    return;
-  }
-  groupsEl.parentElement.style.display='block';
-  detailEl.style.display='none';
   groupsEl.innerHTML=sharedGroupsList.length
     ?sharedGroupsList.map(g=>{
       const isOwner=g.created_by===currentUser?.id;
-      return`<div class="card" style="padding:14px 16px;margin-bottom:8px;cursor:pointer;" onclick="openSharedGroupDetail('${g.id}')">
+      return`<div class="card" style="padding:14px 16px;margin-bottom:8px;cursor:pointer;" onclick="openSharedGroupPage('${g.id}')">
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <div>
             <div style="font-size:14px;font-weight:600;">${escHtml(g.name)}</div>

@@ -12,7 +12,11 @@ function setTheme(id){
   if(m) m.value=id||'';
   markDirty('dashboard','transactions','accounts','investments','budget');
 }
-function loadTheme(){setTheme(localStorage.getItem(THEME_LS_KEY)||'');}
+function loadTheme(){
+  let saved=localStorage.getItem(THEME_LS_KEY);
+  if(!saved&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches) saved='light';
+  setTheme(saved||'');
+}
 
 // ── Toast notifikace ──────────────────────────────────
 // Typy: 'error' (červená), 'success' (zelená), 'warn' (žlutá), 'info' (modrá)
@@ -43,15 +47,54 @@ function updateToggle(id){
 function showSection(id){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('visible'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.nav-child').forEach(n=>n.classList.remove('active'));
   document.querySelectorAll('.bnav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('section-'+id).classList.add('visible');
-  document.getElementById('nav-'+id).classList.add('active');
+  // Nav active states — links-group highlights parent + specific group child
+  if(id==='links-group'){
+    const navLinks=document.getElementById('nav-links');
+    if(navLinks) navLinks.classList.add('active');
+    const child=document.getElementById('nav-sg-'+viewingSharedGroup);
+    if(child) child.classList.add('active');
+    expandSharingNav();
+  } else if(id==='links'){
+    const navLinks=document.getElementById('nav-links');
+    if(navLinks) navLinks.classList.add('active');
+    expandSharingNav();
+  } else {
+    const navEl=document.getElementById('nav-'+id);
+    if(navEl) navEl.classList.add('active');
+  }
   const bnav=document.getElementById('bnav-'+id);
   if(bnav) bnav.classList.add('active');
   _activeSection=id;
-  // Renderuj sekci jen pokud je dirty (nebo při prvním zobrazení)
   _dirty[id]=true;
   _renderVisible();
+}
+
+// ── Sidebar Sdílení dropdown ──────────────────────────
+function toggleSharingNav(){
+  const grp=document.getElementById('nav-group-links');
+  if(grp) grp.classList.toggle('expanded');
+  showSection('links');
+}
+function expandSharingNav(){
+  const grp=document.getElementById('nav-group-links');
+  if(grp) grp.classList.add('expanded');
+}
+function renderSidebarGroups(){
+  const container=document.getElementById('nav-links-children');
+  if(!container) return;
+  container.innerHTML=sharedGroupsList.map(g=>
+    `<button class="nav-child" id="nav-sg-${g.id}" onclick="openSharedGroupPage('${g.id}')">${escHtml(g.name)}</button>`
+  ).join('');
+  // Mobile
+  const mob=document.getElementById('mobile-links-children');
+  if(mob){
+    mob.innerHTML=sharedGroupsList.map(g=>
+      `<button class="mobile-group-item" onclick="closeMobileMenu();openSharedGroupPage('${g.id}')">${escHtml(g.name)}</button>`
+    ).join('');
+  }
 }
 
 // ── Mobilní menu ──────────────────────────────────────
