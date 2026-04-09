@@ -63,12 +63,14 @@ function deleteAcc(){
   transactions.forEach(t=>{
     if(t.accIdx!==undefined&&t.accIdx!==''){
       const ai=parseInt(t.accIdx);
-      if(ai===delIdx) t.accIdx='';
+      if(isNaN(ai)) t.accIdx='';
+      else if(ai===delIdx) t.accIdx='';
       else if(ai>delIdx) t.accIdx=String(ai-1);
     }
     if(t.toAccIdx!=null&&t.toAccIdx!==''){
       const ti=parseInt(t.toAccIdx);
-      if(ti===delIdx) t.toAccIdx='';
+      if(isNaN(ti)) t.toAccIdx='';
+      else if(ti===delIdx) t.toAccIdx='';
       else if(ti>delIdx) t.toAccIdx=String(ti-1);
     }
   });

@@ -1,0 +1,46 @@
+# CLAUDE.md
+
+## Project Overview
+- Personal finance SPA, no framework — pure HTML/CSS/JS
+- Backend: Supabase (auth, cloud sync, sharing)
+- No build, bundler, tests, or package.json — open kasicka.html in browser
+
+## Architecture Decisions
+- Global scope, no modules — all scripts share one window scope
+- markDirty() render pipeline: marks sections dirty, RAF renders only visible section
+- Data persistence: localStorage (immediate) + Supabase cloud sync (1.5s debounce)
+- Data format version: DATA_VERSION = 5 in storage.js, migration chain v0→v5
+
+## Conventions
+- Code language: English (function/variable names)
+- UI language: Czech
+- After EVERY data change: call markDirty(...sections) + saveToStorage()
+- Commit and push to GitHub after every change (git push origin master)
+- Responsive: mobile ≤680px, desktop ≥681px
+
+## NEVER Rules (Non-Negotiable)
+- **NEVER** insert user input into DOM without escHtml() / escAttr()
+- **NEVER** change script load order in kasicka.html without understanding implicit dependencies
+- **NEVER** modify DATA_VERSION without adding a migration step in applyImport()
+- **NEVER** skip markDirty() or saveToStorage() after modifying global data arrays
+- **NEVER** use frameworks, bundlers, or module imports — everything runs in global scope
+- **NEVER** sync theme preference to cloud — it's per-device only (localStorage)
+
+## External Services
+- Supabase — auth + cloud storage + shared groups/transactions
+- Frankfurter API — EUR/USD daily rates (cached in localStorage)
+- Twelve Data API — stock/ETF prices (free tier: 800 req/day)
+- Stooq / Yahoo / CoinGecko — investment price fallbacks via Supabase Edge proxy (CORS)
+- Chart.js 4.4.1 — charts from CDN
+
+## Verification
+- Reload kasicka.html in browser, check console for errors
+- Test the affected section (dashboard, transactions, accounts, investments, budget)
+- Verify data persists after page reload
+
+## Reference
+See .claude/rules/ for detailed reference:
+- architecture.md — script order, boot sequence, render pipeline, persistence flow
+- data-model.md — data structures, recurring transactions
+- ui-reference.md — sections, modals, period system, themes
+- supabase.md — infrastructure, migrations, edge proxy

@@ -257,7 +257,8 @@ function saveInv(){
     invIdx=investments.length-1;
     // Vytvoř transakci — odečti investovanou částku z účtu
     if(accIdx!==''){
-      const acc=accounts[parseInt(accIdx)];
+      const accI=parseInt(accIdx);
+      const acc=(accI>=0&&accI<accounts.length)?accounts[accI]:null;
       if(acc){
         const txnAmount=acc.currency==='CZK'?invested:(RATES[acc.currency]?invested/RATES[acc.currency]:invested);
         transactions.unshift({desc:'Investice → '+ticker,amount:txnAmount,date:startDate,type:'vydaj',cat:'INVESTICE',cur:acc.currency,accIdx:String(accIdx),invIdx:String(invIdx)});
@@ -799,13 +800,14 @@ async function renderInvChart(){
   chartInv=new Chart(ctx,{type:'line',data:{labels:history.map(h=>h.label),datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>v.dataset.label+': '+(v.raw!=null?v.raw.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2}):'-')+' Kc'}}},scales:{x:{ticks:{color:cssVar('--text-secondary'),font:{size:11},maxRotation:45,autoSkip:false,callback:(val,idx)=>{const d=history[idx]?.date;if(!d)return null;const dt=new Date(d+'T12:00:00');if(invPeriod==='tyden')return dt.toLocaleDateString('cs-CZ',{weekday:'short',day:'numeric',month:'numeric'});if(invPeriod==='mesic'){if(dt.getDay()!==1)return null;return dt.toLocaleDateString('cs-CZ',{day:'2-digit',month:'2-digit'});}if(!d.endsWith('-01'))return null;return dt.toLocaleDateString('cs-CZ',{month:'short',year:'2-digit'});}},grid:{color:cssVar('--border-subtle')}},y:{ticks:{color:cssVar('--text-secondary'),font:{size:11},callback:v=>v.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})},grid:{color:cssVar('--border-subtle')}}}},});
 }
 
-// ── Supabase server-side proxy (žádné CORS problémy) ─────
+// ── Supabase Edge Function proxy (server-side, injektuje API klíče) ──
 async function supaFetch(url){
   if(!currentUser) return null;
   try{
-    const {data,error}=await supa.rpc('proxy_fetch',{target_url:url});
-    if(error||!data) return null;
-    return{ok:true,text:async()=>data,json:async()=>JSON.parse(data)};
+    const {data,error}=await supa.functions.invoke('proxy-fetch',{body:{url}});
+    if(error||data==null) return null;
+    const text=typeof data==='string'?data:JSON.stringify(data);
+    return{ok:true,text:async()=>text,json:async()=>typeof data==='string'?JSON.parse(data):data};
   }catch(e){console.warn('supaFetch selhal:',e.message);return null;}
 }
 
@@ -850,9 +852,9 @@ function tdSymbolParams(rawSymbol){
 }
 
 async function fetchTwelvePrice(symbol){
-  if(!TWELVE_DATA_KEY) return null;
   try{
-    const r=await fetch(`https://api.twelvedata.com/price?${tdSymbolParams(symbol)}&apikey=${TWELVE_DATA_KEY}`,{signal:AbortSignal.timeout(8000)});
+    const r=await fetchCors(`https://api.twelvedata.com/price?${tdSymbolParams(symbol)}`,8000);
+    if(!r) return null;
     const d=await r.json();
     if(d.code||!d.price) return null;
     return{price:parseFloat(d.price),currency:'USD',source:'twelvedata'};
@@ -860,12 +862,12 @@ async function fetchTwelvePrice(symbol){
 }
 
 async function fetchTwelvePriceWithCurrency(symbol, _retries=2){
-  if(!TWELVE_DATA_KEY) return null;
-  const url=`https://api.twelvedata.com/quote?${tdSymbolParams(symbol)}&apikey=${TWELVE_DATA_KEY}`;
+  const url=`https://api.twelvedata.com/quote?${tdSymbolParams(symbol)}`;
   for(let attempt=0;attempt<=_retries;attempt++){
     try{
       if(attempt>0) await new Promise(ok=>setTimeout(ok,1500*attempt));
-      const r=await fetch(url,{signal:AbortSignal.timeout(10000)});
+      const r=await fetchCors(url,10000);
+      if(!r) return null;
       const d=await r.json();
       if(d.code===429){continue;}
       if(d.code||!d.close) return null;
@@ -878,12 +880,12 @@ async function fetchTwelvePriceWithCurrency(symbol, _retries=2){
 }
 
 async function fetchTwelveHistory(symbol, fromDate, _retries=2){
-  if(!TWELVE_DATA_KEY) return null;
-  const url=`https://api.twelvedata.com/time_series?${tdSymbolParams(symbol)}&interval=1day&start_date=${fromDate}&order=ASC&outputsize=5000&apikey=${TWELVE_DATA_KEY}`;
+  const url=`https://api.twelvedata.com/time_series?${tdSymbolParams(symbol)}&interval=1day&start_date=${fromDate}&order=ASC&outputsize=5000`;
   for(let attempt=0;attempt<=_retries;attempt++){
     try{
       if(attempt>0) await new Promise(ok=>setTimeout(ok,1500*attempt));
-      const r=await fetch(url,{signal:AbortSignal.timeout(18000)});
+      const r=await fetchCors(url,18000);
+      if(!r) return null;
       const d=await r.json();
       if(d.code===429){continue;}
       if(d.code||!d.values) return null;
@@ -896,15 +898,15 @@ async function fetchTwelveHistory(symbol, fromDate, _retries=2){
 }
 
 async function fetchTwelvePriceAtDate(symbol, date, _retries=2){
-  if(!TWELVE_DATA_KEY) return null;
   const dd=new Date(date+'T00:00:00');
   dd.setDate(dd.getDate()-10);
   const from=dd.toISOString().split('T')[0];
-  const url=`https://api.twelvedata.com/time_series?${tdSymbolParams(symbol)}&interval=1day&start_date=${from}&order=DESC&outputsize=30&apikey=${TWELVE_DATA_KEY}`;
+  const url=`https://api.twelvedata.com/time_series?${tdSymbolParams(symbol)}&interval=1day&start_date=${from}&order=DESC&outputsize=30`;
   for(let attempt=0;attempt<=_retries;attempt++){
     try{
       if(attempt>0) await new Promise(ok=>setTimeout(ok,2000*attempt));
-      const r=await fetch(url,{signal:AbortSignal.timeout(15000)});
+      const r=await fetchCors(url,15000);
+      if(!r) return null;
       const resp=await r.json();
       if(resp.code===429){continue;} // rate limit → retry
       if(resp.status==='error') return null; // paid plan / invalid → no retry, no log
@@ -924,19 +926,19 @@ async function fetchTwelvePriceAtDate(symbol, date, _retries=2){
 let _ratesCached=false, _usdCzkRate=23;
 async function fetchExchangeRates(){
   if(_ratesCached) return;
-  // Primární: Twelve Data forex (přímý CORS-friendly API)
-  if(TWELVE_DATA_KEY){
-    try{
-      const [rEur,rUsd]=await Promise.all([
-        fetch(`https://api.twelvedata.com/exchange_rate?symbol=EUR/CZK&apikey=${TWELVE_DATA_KEY}`,{signal:AbortSignal.timeout(8000)}),
-        fetch(`https://api.twelvedata.com/exchange_rate?symbol=USD/CZK&apikey=${TWELVE_DATA_KEY}`,{signal:AbortSignal.timeout(8000)})
-      ]);
+  // Primární: Twelve Data forex přes server proxy
+  try{
+    const [rEur,rUsd]=await Promise.all([
+      fetchCors('https://api.twelvedata.com/exchange_rate?symbol=EUR/CZK',8000),
+      fetchCors('https://api.twelvedata.com/exchange_rate?symbol=USD/CZK',8000)
+    ]);
+    if(rEur&&rUsd){
       const dEur=await rEur.json(), dUsd=await rUsd.json();
       if(dEur.rate){eurCzkRate=parseFloat(dEur.rate);RATES.EUR=eurCzkRate;}
       if(dUsd.rate){_usdCzkRate=parseFloat(dUsd.rate);RATES.USD=_usdCzkRate;}
       _ratesCached=true; return;
-    }catch(e){console.warn('Twelve Data forex kurzy selhaly:',e.message);}
-  }
+    }
+  }catch(e){console.warn('Twelve Data forex kurzy selhaly:',e.message);}
   // Fallback: CNB přes CORS proxy
   try{
     const r=await fetchCors('https://api.cnb.cz/cnbapi/exrates/daily?date='+today()+'&lang=EN',6000);

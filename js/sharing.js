@@ -185,7 +185,6 @@ async function saveSharedGroup(){
     if(error){toast('Chyba při úpravě skupiny: '+error.message,'error');return;}
 
     // Synchronizace členů — zjisti rozdíl
-    const g=sharedGroupsList.find(gr=>gr.id===_editingGroupId);
     const currentMembers=(g?.memberIds||[]).filter(uid=>uid!==currentUser.id);
     const toAdd=selectedFriends.filter(uid=>!currentMembers.includes(uid));
     const toRemove=currentMembers.filter(uid=>!selectedFriends.includes(uid));

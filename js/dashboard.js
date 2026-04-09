@@ -78,30 +78,9 @@ function renderDashboard(){
 }
 
 // Spočítá výdaje pro rozpočet v daném rozsahu (pro Přehled)
+// Deleguje na sdílený calcBudgetSpent() v config.js
 function getBudgetSpentForRange(b, range){
-  const matchTxn=t=>{
-    if(b.trackMode==='tags'){
-      const tags=b.trackTags&&b.trackTags.length?b.trackTags:[];
-      if(!tags.length) return false;
-      const txnTags=Array.isArray(t.tags)?t.tags:(t.tag?[t.tag]:[]);
-      return tags.some(tag=>txnTags.includes(tag));
-    } else {
-      const cats=b.cats&&b.cats.length?b.cats:[b.name];
-      return cats.includes(t.cat);
-    }
-  };
-  const net=b.flowMode==='net';
-  const list=transactions.filter(t=>{
-    if(!matchTxn(t)) return false;
-    if(t.type==='prevod') return false;
-    if(!net&&t.type!=='vydaj') return false;
-    if(range){const d=new Date(t.date+'T12:00:00');return d>=range.from&&d<=range.to;}
-    return true;
-  });
-  const out=list.filter(t=>t.type==='vydaj').reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
-  if(!net) return out;
-  const inc=list.filter(t=>t.type==='prijem').reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
-  return out-inc;
+  return calcBudgetSpent(b, range);
 }
 
 function renderCategoryChart(){
@@ -190,16 +169,22 @@ function renderTrendChart(){
   const ctx=document.getElementById('chartTrend');
   if(!ctx) return;
   if(chartTrend){chartTrend.destroy();chartTrend=null;}
+  // Pre-group transactions by year-month (single pass)
+  const monthInc={}, monthExp={};
+  transactions.forEach(t=>{
+    if(!t.date||(t.type!=='prijem'&&t.type!=='vydaj')) return;
+    const dt=new Date(t.date+'T12:00:00');
+    const key=dt.getFullYear()+'-'+dt.getMonth();
+    const val=toCZK(t.amount,t.cur);
+    if(t.type==='prijem') monthInc[key]=(monthInc[key]||0)+val;
+    else monthExp[key]=(monthExp[key]||0)+val;
+  });
   const labels=[],incomeData=[],expenseData=[];
   for(let i=11;i>=0;i--){
     const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);
-    const y=d.getFullYear(),m=d.getMonth();
+    const key=d.getFullYear()+'-'+d.getMonth();
     const label=d.toLocaleDateString('cs-CZ',{month:'short',year:'2-digit'});
-    const inc=transactions.filter(t=>t.type==='prijem'&&t.date&&new Date(t.date+'T12:00:00').getFullYear()===y&&new Date(t.date+'T12:00:00').getMonth()===m)
-      .reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
-    const exp=transactions.filter(t=>t.type==='vydaj'&&t.date&&new Date(t.date+'T12:00:00').getFullYear()===y&&new Date(t.date+'T12:00:00').getMonth()===m)
-      .reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
-    labels.push(label);incomeData.push(Math.round(inc));expenseData.push(Math.round(exp));
+    labels.push(label);incomeData.push(Math.round(monthInc[key]||0));expenseData.push(Math.round(monthExp[key]||0));
   }
   chartTrend=new Chart(ctx,{
     type:'bar',

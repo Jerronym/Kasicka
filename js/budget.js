@@ -137,40 +137,14 @@ function deleteBud(){
 }
 
 function getBudgetSpent(b){
+  if(b.budType==='cumulative') return calcBudgetSpent(b, null);
   const now=new Date(); now.setHours(0,0,0,0);
-  const matchTxn=t=>{
-    if(b.trackMode==='tags'){
-      const tags=b.trackTags&&b.trackTags.length?b.trackTags:[];
-      if(!tags.length) return false;
-      const txnTags=Array.isArray(t.tags)?t.tags:(t.tag?[t.tag]:[]);
-      return tags.some(tag=>txnTags.includes(tag));
-    } else {
-      const cats=b.cats&&b.cats.length?b.cats:[b.name];
-      return cats.includes(t.cat);
-    }
-  };
-  const net=b.flowMode==='net';
-  const calcNet=(list)=>{
-    const out=list.filter(t=>t.type==='vydaj'&&matchTxn(t)).reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
-    if(!net) return out;
-    const inc=list.filter(t=>t.type==='prijem'&&matchTxn(t)).reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
-    return out-inc;
-  };
-  if(b.budType==='cumulative'){
-    return calcNet(transactions);
-  }
   const period=b.period||'month';
   let from;
   if(period==='week'){from=new Date(now);from.setDate(from.getDate()-(from.getDay()||7)+1);}
   else if(period==='year'){from=new Date(now.getFullYear(),0,1);}
   else{from=new Date(now.getFullYear(),now.getMonth(),1);}
-  return calcNet(transactions.filter(t=>{
-    if(!matchTxn(t)) return false;
-    if(!net&&t.type!=='vydaj') return false;
-    if(net&&t.type==='prevod') return false;
-    const d=new Date(t.date+'T12:00:00');
-    return d>=from&&d<=now;
-  }));
+  return calcBudgetSpent(b, {from, to:now});
 }
 
 function periodLabel(b){

@@ -15,11 +15,9 @@ function getCatIcon(name){
 
 function getSortedCategories(){
   // Seřadit kategorie podle celkové utracené částky (sestupně)
-  return [...categories].sort((a,b)=>{
-    const sumA=transactions.filter(t=>t.type==='vydaj'&&t.cat===a.name).reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
-    const sumB=transactions.filter(t=>t.type==='vydaj'&&t.cat===b.name).reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
-    return sumB-sumA;
-  });
+  const sums={};
+  transactions.forEach(t=>{if(t.type==='vydaj') sums[t.cat]=(sums[t.cat]||0)+toCZK(t.amount,t.cur);});
+  return [...categories].sort((a,b)=>(sums[b.name]||0)-(sums[a.name]||0));
 }
 
 function renderTagQuickPicks(){
@@ -97,7 +95,10 @@ function saveCat(){
     const oldName=categories[editingCat].name;
     categories[editingCat]={name,color:selectedCatColor,icon:selectedCatIcon};
     transactions.forEach(t=>{if(t.cat===oldName) t.cat=name;});
-    budgets.forEach(b=>{if(b.name===oldName) b.name=name;});
+    budgets.forEach(b=>{
+      if(b.name===oldName) b.name=name;
+      if(b.cats) b.cats=b.cats.map(c=>c===oldName?name:c);
+    });
   }
   saveToStorage();
   closeModal('cat');
@@ -120,11 +121,16 @@ function deleteCat(){
 function renderCategories(){
   const grid=document.getElementById('categories-grid');
   if(!grid) return;
-  // Seřadit podle utracené částky
+  // Seřadit podle utracené částky — single-pass precomputation
+  const counts={}, spendings={};
+  transactions.forEach(t=>{
+    counts[t.cat]=(counts[t.cat]||0)+1;
+    if(t.type==='vydaj') spendings[t.cat]=(spendings[t.cat]||0)+toCZK(t.amount,t.cur);
+  });
   const withStats=categories.map((c,i)=>({
     c, i,
-    usedCount:transactions.filter(t=>t.cat===c.name).length,
-    totalSpent:transactions.filter(t=>t.cat===c.name&&t.type==='vydaj').reduce((s,t)=>s+toCZK(t.amount,t.cur),0)
+    usedCount:counts[c.name]||0,
+    totalSpent:spendings[c.name]||0
   })).sort((a,b)=>b.totalSpent-a.totalSpent);
   grid.innerHTML=withStats.map(({c,i,usedCount,totalSpent})=>{
     return`<div class="card" style="display:flex;align-items:center;gap:14px;padding:14px 16px;">

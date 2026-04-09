@@ -117,7 +117,8 @@ function showApp(user){
   if(emailEl) emailEl.textContent=user.email;
   if(userInfoEl) userInfoEl.style.display='flex';
   if(typeof updateMobileUserInfo==='function') updateMobileUserInfo();
-  loadFromCloud();
+  showLoading('Načítání dat...');
+  loadFromCloud().finally(hideLoading);
 }
 
 function hideApp(){

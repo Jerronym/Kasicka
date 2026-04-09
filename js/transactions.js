@@ -182,7 +182,9 @@ async function saveTxn(){
   recurringMode=false;
 
   // Kontrola: transakce před počátečním datem účtu
-  const acc=accounts[parseInt(accIdx)];
+  const accI=parseInt(accIdx);
+  if(isNaN(accI)||accI<0||accI>=accounts.length){toast('Neplatný účet.','warn');return;}
+  const acc=accounts[accI];
   if(acc&&acc.startDate&&date<acc.startDate){
     const ok=await confirmDialog('Transakce ('+new Date(date+'T12:00:00').toLocaleDateString('cs-CZ')+') je před počátečním datem účtu „'+acc.name+'" ('+new Date(acc.startDate+'T12:00:00').toLocaleDateString('cs-CZ')+').\nPosunout počáteční datum účtu?');
     if(!ok) return;
