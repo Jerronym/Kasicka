@@ -662,17 +662,22 @@ async function renderInvChart(){
     filteredInvs.forEach((inv,fi)=>{
       const invStart=inv.startDate||globalStart;
       if(date<invStart) return;
-      // Najdi transakce pro tuto investici
+      // Najdi nákupní transakce pro tuto investici
       const myTxns=invTxns.filter(t=>{
         if(t.invIdx!==undefined&&t.invIdx!==null) return String(t.invIdx)===String(selectedIdxs[fi]);
         return inv.ticker&&t.desc&&(t.desc.includes(inv.ticker)||t.desc.includes(inv.ticker.split(' ')[0]));
       });
-      // Počáteční zůstatek = inv.invested minus všechny transakce (ty nastaly po startDate)
+      // Prodejní záznamy z historie — obsahují investedReduction (kolik z investované částky se odebralo)
+      const saleHist=(inv.history||[]).filter(h=>h.isSale);
+      const saleReduction=h=>h.investedReduction!=null?h.investedReduction:(h.prevValue>0?h.prevValue-h.value:0);
+      const allSaleReductions=saleHist.reduce((s,h)=>s+saleReduction(h),0);
+      // Počáteční zůstatek = (inv.invested + všechny prodejní redukce) - všechny nákupy
       const allTxnSum=myTxns.reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
-      const startBalance=Math.max(0, inv.invested - allTxnSum);
-      // K tomuto datu: startBalance + transakce do tohoto data
+      const startBalance=Math.max(0, inv.invested + allSaleReductions - allTxnSum);
+      // K tomuto datu: startBalance + nákupy do data - prodejní redukce do data
       const txnToDate=myTxns.filter(t=>t.date<=date).reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
-      invested+=startBalance+txnToDate;
+      const reductionsToDate=saleHist.filter(h=>h.date<=date).reduce((s,h)=>s+saleReduction(h),0);
+      invested+=startBalance+txnToDate-reductionsToDate;
     });
 
     let value=null;
@@ -1699,7 +1704,7 @@ function saveSellInv(){
   // 5. Zaznamenat prodej do historie
   if(!inv.history) inv.history=[];
   const newInvValue=getInvValue(parseInt(ii));
-  const saleEntry={date, value:newInvValue, prevValue:prevInvValue, note, isSale:true};
+  const saleEntry={date, value:newInvValue, prevValue:prevInvValue, note, isSale:true, investedReduction};
   if(sharesSold) saleEntry.sharesSold=sharesSold;
   inv.history.push(saleEntry);
   inv.history.sort((a,b)=>a.date.localeCompare(b.date));
