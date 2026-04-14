@@ -294,9 +294,10 @@
   <div class="section" id="section-investments">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
       <div class="page-title">Investice</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;">
         <button class="btn btn-outline" onclick="openInvGroupModal(-1)" style="border-color:color-mix(in srgb, var(--purple) 40%, transparent);color:var(--purple);">⊞ Skupiny</button>
         <button class="btn btn-outline" onclick="openInvestFromAcc()" style="border-color:color-mix(in srgb, var(--green) 40%, transparent);color:var(--green);">↓ Z účtu</button>
+        <button class="btn btn-outline" onclick="openSellInvModal()" style="border-color:color-mix(in srgb, var(--red) 40%, transparent);color:var(--red);">↑ Prodat</button>
         <button class="btn btn-outline" id="btn-auto-update" onclick="autoUpdatePrices()" style="border-color:color-mix(in srgb, var(--accent) 40%, transparent);color:var(--accent);">⟳ Aktualizovat</button>
         <button class="btn btn-outline" onclick="openInvUpdateModal()" style="border-color:color-mix(in srgb, var(--amber) 40%, transparent);color:var(--amber);">↻ Zadat ručně</button>
         <button class="btn btn-outline" onclick="resetInvestments()" style="border-color:color-mix(in srgb, var(--red) 40%, transparent);color:var(--red);">⚠ Smazat vše</button>
@@ -804,6 +805,66 @@
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal('invest-from-acc')">Zrušit</button>
       <button class="btn" onclick="saveInvestFromAcc()">Investovat</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PRODEJ INVESTICE -->
+<div class="modal-overlay" id="modal-sell-inv">
+  <div class="modal"><h3>Prodat investici</h3>
+    <div class="form-group"><label>Investice k prodeji</label><select id="si-inv" onchange="onSellInvChange()"></select></div>
+
+    <div id="si-info" style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:8px;padding:10px 13px;margin-bottom:12px;font-size:12.5px;display:none;">
+      <div><span style="color:var(--text-secondary);">Aktuální hodnota:</span> <span id="si-cur-value" style="font-weight:600;"></span></div>
+      <div id="si-shares-info"><span style="color:var(--text-secondary);">Počet kusů:</span> <span id="si-cur-shares" style="font-weight:600;"></span></div>
+      <div id="si-unit-info"><span style="color:var(--text-secondary);">Cena / ks:</span> <span id="si-cur-unit" style="font-weight:600;"></span></div>
+    </div>
+
+    <!-- Sekce pro automaticky sledovanou investici (prodej dle kusů) -->
+    <div id="si-auto-section" style="display:none;">
+      <div class="form-row">
+        <div class="form-group"><label>Datum prodeje</label><input type="date" id="si-date-auto" onchange="resetSellPrice()"></div>
+        <div class="form-group">
+          <label>Počet kusů k prodeji</label>
+          <input type="number" id="si-shares-sell" placeholder="např. 3.5" min="0" step="0.0001" oninput="calcSellAmount()">
+        </div>
+      </div>
+      <div class="form-row" style="align-items:flex-end;">
+        <div class="form-group" style="flex:1;">
+          <label>Prodejní cena / ks (Kč) <span id="si-price-source" style="color:var(--text-secondary);font-weight:400;"></span></label>
+          <input type="number" id="si-unit-price" placeholder="klikni Načíst →" min="0" step="0.01" oninput="calcSellAmount()">
+        </div>
+        <div style="padding-bottom:14px;">
+          <button type="button" class="btn btn-outline btn-sm" id="si-fetch-btn" onclick="fetchSellPriceAtDate()" style="white-space:nowrap;">Načíst cenu k datu</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Výnos z prodeje (ve měně účtu)</label><input type="number" id="si-amount" placeholder="0" min="0" step="1" oninput="updateSellHint()"></div>
+        <div class="form-group"><label>Poznámka (volitelně)</label><input type="text" id="si-note-auto" placeholder="např. Prodej ETF"></div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <button type="button" class="btn btn-outline btn-sm" onclick="sellAll()" style="border-color:color-mix(in srgb, var(--red) 40%, transparent);color:var(--red);">Prodat vše</button>
+      </div>
+    </div>
+
+    <!-- Sekce pro ručně sledovanou investici -->
+    <div id="si-manual-section">
+      <div class="form-row">
+        <div class="form-group"><label>Částka prodeje (ve měně účtu)</label><input type="number" id="si-amount-m" placeholder="0" min="0" step="1" oninput="updateSellHint()"></div>
+        <div class="form-group"><label>Datum</label><input type="date" id="si-date"></div>
+      </div>
+      <div class="form-group"><label>Poznámka (volitelně)</label><input type="text" id="si-note" placeholder="např. Prodej investice"></div>
+      <div style="margin-bottom:12px;">
+        <button type="button" class="btn btn-outline btn-sm" onclick="sellAll()" style="border-color:color-mix(in srgb, var(--red) 40%, transparent);color:var(--red);">Prodat vše</button>
+      </div>
+    </div>
+
+    <div class="form-group"><label>Na účet (přičte zůstatek)</label><select id="si-acc" onchange="updateSellHint()"></select></div>
+
+    <div id="si-hint" style="font-size:11.5px;color:var(--text-secondary);margin-bottom:12px;min-height:18px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('sell-inv')">Zrušit</button>
+      <button class="btn" style="background:var(--red);" onclick="saveSellInv()">Prodat</button>
     </div>
   </div>
 </div>

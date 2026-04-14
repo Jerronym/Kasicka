@@ -398,7 +398,7 @@ function renderInvRow(inv, i, current){
       <div id="inv-hist-${i}" style="display:none;">${hist.map(h=>{
         const d=h.value-h.prevValue; const dp=h.prevValue?(d/h.prevValue*100):0;
         return`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border-subtle);">
-          <div><span style="font-size:12px;color:var(--text-secondary)">${h.date}</span>${h.note?`<span style="font-size:11.5px;color:var(--text-secondary);margin-left:8px;font-style:italic">${escHtml(h.note)}</span>`:''}</div>
+          <div><span style="font-size:12px;color:var(--text-secondary)">${h.date}</span>${h.isSale?'<span style="color:var(--red);font-size:10.5px;font-weight:600;margin-left:6px;">PRODEJ</span>':''}${h.isPurchase?'<span style="color:var(--green);font-size:10.5px;font-weight:600;margin-left:6px;">NÁKUP</span>':''}${h.note?`<span style="font-size:11.5px;color:var(--text-secondary);margin-left:8px;font-style:italic">${escHtml(h.note)}</span>`:''}</div>
           <div style="text-align:right"><span style="font-size:13px;font-weight:500">${fmt(h.value)}</span><span style="font-size:11.5px;margin-left:6px;color:${d>=0?'var(--green)':'var(--red)'}">${d>=0?'+':''}${dp.toFixed(1)} %</span></div>
         </div>`;
       }).join('')}</div>
@@ -415,6 +415,7 @@ function renderInvRow(inv, i, current){
       <div style="text-align:right;font-size:12px;min-width:70px;color:${p>=0?'var(--green)':'var(--red)'}">${p>=0?'+':''}${pp.toFixed(1)} %</div>
       <div style="display:flex;gap:5px;">
         <button class="btn-edit" style="color:var(--amber);border-color:color-mix(in srgb, var(--amber) 30%, transparent)" onclick="openInvUpdateModal(${i})">↻</button>
+        <button class="btn-edit" style="color:var(--red);border-color:color-mix(in srgb, var(--red) 30%, transparent)" onclick="openSellInvModal(${i})">Prodat</button>
         <button class="btn-edit" onclick="openInvModal(${i})">Upravit</button>
       </div>
     </div>${histHtml}
@@ -1103,16 +1104,23 @@ async function buildInvHistoryFromAPI(invIdx){
   }
   if(!rawData||rawData.length<1) return false;
 
-  // Zachovat isPurchase záznamy před přepsáním
-  const oldPurchases=(inv.history||[]).filter(h=>h.isPurchase);
+  // Zachovat isPurchase a isSale záznamy před přepsáním
+  const oldEvents=(inv.history||[]).filter(h=>h.isPurchase||h.isSale);
 
-  // Rekonstruovat časovou osu počtu podílů z dokoupení
-  const purchaseEvents=oldPurchases.filter(h=>h.sharesBought>0).sort((a,b)=>a.date.localeCompare(b.date));
+  // Rekonstruovat časovou osu počtu podílů z dokoupení a prodejů
+  const purchaseEvents=oldEvents.filter(h=>h.isPurchase&&h.sharesBought>0).sort((a,b)=>a.date.localeCompare(b.date));
+  const saleEvents=oldEvents.filter(h=>h.isSale&&h.sharesSold>0).sort((a,b)=>a.date.localeCompare(b.date));
   const totalPurchaseShares=purchaseEvents.reduce((s,p)=>s+(p.sharesBought||0),0);
-  const initialShares=Math.max(0,(inv.shares||0)-totalPurchaseShares);
+  const totalSaleShares=saleEvents.reduce((s,p)=>s+(p.sharesSold||0),0);
+  const initialShares=Math.max(0,(inv.shares||0)-totalPurchaseShares+totalSaleShares);
+  // Sloučit nákupy a prodeje do jedné časové osy
+  const allShareEvents=[
+    ...purchaseEvents.map(p=>({date:p.date,delta:p.sharesBought})),
+    ...saleEvents.map(s=>({date:s.date,delta:-s.sharesSold}))
+  ].sort((a,b)=>a.date.localeCompare(b.date));
   const shareTimeline=[{date:'0000-00-00',cumShares:initialShares}];
   let cumShares=initialShares;
-  for(const p of purchaseEvents){cumShares+=p.sharesBought;shareTimeline.push({date:p.date,cumShares});}
+  for(const e of allShareEvents){cumShares=Math.max(0,cumShares+e.delta);shareTimeline.push({date:e.date,cumShares});}
   const getSharesAt=date=>{let s=shareTimeline[0].cumShares;for(const t of shareTimeline){if(t.date<=date)s=t.cumShares;else break;}return s;};
 
   // Každý obchodní den = jeden záznam v historii
@@ -1126,8 +1134,8 @@ async function buildInvHistoryFromAPI(invIdx){
   newHistory.sort((a,b)=>a.date.localeCompare(b.date));
   for(let i=1;i<newHistory.length;i++) newHistory[i].prevValue=newHistory[i-1].value;
 
-  // Spojit API záznamy s isPurchase záznamy
-  inv.history=[...newHistory,...oldPurchases].sort((a,b)=>a.date.localeCompare(b.date));
+  // Spojit API záznamy s isPurchase a isSale záznamy
+  inv.history=[...newHistory,...oldEvents].sort((a,b)=>a.date.localeCompare(b.date));
   if(newHistory.length){
     const last=newHistory[newHistory.length-1];
     inv.value=last.value;
@@ -1412,4 +1420,309 @@ function saveInvestFromAcc(){
       if(ok){saveToStorage();markDirty('investments');}
     });
   }
+}
+
+// ==================== PRODEJ INVESTICE ====================
+
+function openSellInvModal(invIdx){
+  const invSel=document.getElementById('si-inv');
+  const accSel=document.getElementById('si-acc');
+
+  // Naplnit dropdown investic (jen ty s hodnotou > 0 nebo s kusy)
+  invSel.innerHTML='';
+  let hasOptions=false;
+  investments.forEach((inv,i)=>{
+    const val=getInvValue(i);
+    if(val<=0&&(!inv.shares||inv.shares<=0)) return;
+    const o=document.createElement('option');
+    o.value=i;
+    o.textContent=inv.ticker+' ('+inv.type+') — '+fmt(val);
+    invSel.appendChild(o);
+    hasOptions=true;
+  });
+  if(!hasOptions){invSel.innerHTML='<option value="">Žádné investice k prodeji</option>';}
+
+  // Naplnit dropdown účtů
+  accSel.innerHTML='';
+  accounts.forEach((a,i)=>{
+    const o=document.createElement('option');
+    o.value=i;
+    o.textContent=a.name+' — '+fmt(getBalance(i),a.currency);
+    accSel.appendChild(o);
+  });
+
+  // Předvyplnit přiřazený účet investice
+  if(invIdx!==undefined&&invIdx>=0){
+    invSel.value=invIdx;
+    const inv=investments[invIdx];
+    if(inv&&inv.accIdx!==undefined&&inv.accIdx!==''){
+      accSel.value=inv.accIdx;
+    }
+  }
+
+  // Reset polí
+  document.getElementById('si-amount').value='';
+  document.getElementById('si-amount-m').value='';
+  document.getElementById('si-note-auto').value='';
+  document.getElementById('si-note').value='';
+  document.getElementById('si-date').value=today();
+  document.getElementById('si-date-auto').value=today();
+  document.getElementById('si-shares-sell').value='';
+  document.getElementById('si-unit-price').value='';
+  document.getElementById('si-price-source').textContent='';
+  document.getElementById('si-hint').textContent='';
+
+  onSellInvChange();
+  openModal('sell-inv');
+}
+
+function onSellInvChange(){
+  const ii=document.getElementById('si-inv').value;
+  const inv=ii!==''?investments[parseInt(ii)]:null;
+  const isAuto=!!(inv&&inv.apiSymbol);
+  const infoEl=document.getElementById('si-info');
+
+  document.getElementById('si-auto-section').style.display=isAuto?'block':'none';
+  document.getElementById('si-manual-section').style.display=isAuto?'none':'block';
+
+  if(inv){
+    infoEl.style.display='block';
+    const val=getInvValue(parseInt(ii));
+    document.getElementById('si-cur-value').textContent=fmt(val);
+
+    if(isAuto&&inv.shares){
+      document.getElementById('si-shares-info').style.display='block';
+      document.getElementById('si-unit-info').style.display='block';
+      document.getElementById('si-cur-shares').textContent=(inv.shares||0).toFixed(4);
+      const unitPrice=inv.shares?(val/inv.shares):0;
+      document.getElementById('si-cur-unit').textContent=fmt(unitPrice);
+    } else {
+      document.getElementById('si-shares-info').style.display=isAuto?'block':'none';
+      document.getElementById('si-unit-info').style.display=isAuto?'block':'none';
+    }
+
+    // Předvyplnit přiřazený účet
+    if(inv.accIdx!==undefined&&inv.accIdx!==''){
+      document.getElementById('si-acc').value=inv.accIdx;
+    }
+
+    document.getElementById('si-unit-price').value='';
+    document.getElementById('si-price-source').textContent='';
+    document.getElementById('si-shares-sell').value='';
+    document.getElementById('si-amount').value='';
+    document.getElementById('si-amount-m').value='';
+  } else {
+    infoEl.style.display='none';
+  }
+  document.getElementById('si-hint').textContent='';
+}
+
+function resetSellPrice(){
+  document.getElementById('si-unit-price').value='';
+  document.getElementById('si-price-source').textContent='';
+  calcSellAmount();
+}
+
+function calcSellAmount(){
+  const shares=parseFloat(document.getElementById('si-shares-sell').value)||0;
+  const price=parseFloat(document.getElementById('si-unit-price').value)||0;
+  if(shares&&price) document.getElementById('si-amount').value=Math.round(shares*price*100)/100;
+  updateSellHint();
+}
+
+async function fetchSellPriceAtDate(){
+  const ii=document.getElementById('si-inv').value;
+  const inv=ii!==''?investments[parseInt(ii)]:null;
+  if(!inv||!inv.apiSymbol) return;
+  const date=document.getElementById('si-date-auto').value;
+  if(!date){toast('Nejdřív zadej datum prodeje.','warn');return;}
+
+  const btn=document.getElementById('si-fetch-btn');
+  btn.textContent='Načítám…';btn.disabled=true;
+
+  await fetchExchangeRates();
+  const usdRate=_usdCzkRate;
+
+  let rawPrice=null, rawCurrency='USD', rawSource='';
+  const cryptoSymbols=['BTC','ETH','BNB','SOL','ADA','XRP','DOGE'];
+  if(cryptoSymbols.includes(inv.apiSymbol.toUpperCase())){
+    const tdResult=await fetchTwelvePriceAtDate(inv.apiSymbol+'/USD', date);
+    if(tdResult){
+      rawPrice=tdResult.price; rawCurrency='USD'; rawSource='twelvedata';
+    } else {
+      const hist=await fetchCoinGeckoHistory(inv.apiSymbol, date);
+      if(hist&&hist.length){
+        const target=hist.find(d=>d.date>=date)||hist[hist.length-1];
+        rawPrice=target.close; rawCurrency='CZK'; rawSource='coingecko';
+      }
+    }
+  } else {
+    const tdResult=await fetchTwelvePriceAtDate(inv.apiSymbol, date);
+    if(tdResult){
+      rawPrice=tdResult.price; rawCurrency='USD'; rawSource='twelvedata';
+    } else {
+      const hist=await fetchStooqHistory(inv.apiSymbol, date);
+      if(hist&&hist.length){
+        rawPrice=hist[0].close;
+        rawCurrency=/\.[A-Z]{2,3}$/.test(inv.apiSymbol)?'EUR':'USD';
+        rawSource='stooq';
+      } else {
+        const yhist=await fetchYahooHistory(inv.apiSymbol, date);
+        if(yhist&&yhist.length){
+          rawPrice=yhist[0].close;
+          rawCurrency=/\.[A-Z]{2,3}$/.test(inv.apiSymbol)?'EUR':'USD';
+          rawSource='yahoo';
+        }
+      }
+    }
+  }
+
+  btn.textContent='Načíst cenu k datu';btn.disabled=false;
+
+  if(!rawPrice){toast('Cenu k datu '+date+' se nepodařilo načíst. Zkontroluj symbol a datum.','error',6000);return;}
+
+  let priceCzk=rawPrice;
+  if(rawCurrency==='EUR') priceCzk=rawPrice*eurCzkRate;
+  else if(rawCurrency==='USD') priceCzk=rawPrice*usdRate;
+
+  document.getElementById('si-unit-price').value=Math.round(priceCzk*100)/100;
+  document.getElementById('si-price-source').textContent='('+rawSource+', '+rawCurrency+')';
+  calcSellAmount();
+}
+
+function sellAll(){
+  const ii=document.getElementById('si-inv').value;
+  if(ii==='') return;
+  const inv=investments[parseInt(ii)];
+  const isAuto=!!(inv&&inv.apiSymbol);
+
+  if(isAuto){
+    document.getElementById('si-shares-sell').value=inv.shares||0;
+    calcSellAmount();
+  } else {
+    const val=getInvValue(parseInt(ii));
+    document.getElementById('si-amount-m').value=Math.round(val*100)/100;
+    updateSellHint();
+  }
+}
+
+function updateSellHint(){
+  const ai=document.getElementById('si-acc').value;
+  const ii=document.getElementById('si-inv').value;
+  const inv=ii!==''?investments[parseInt(ii)]:null;
+  const isAuto=!!(inv&&inv.apiSymbol);
+  const amount=parseFloat(isAuto
+    ?document.getElementById('si-amount').value
+    :document.getElementById('si-amount-m').value)||0;
+  const hint=document.getElementById('si-hint');
+  if(ai===''||!inv||!amount){hint.textContent='';return;}
+  const acc=accounts[ai];
+  if(!acc){hint.textContent='';return;}
+
+  const inCZK=toCZK(amount,acc.currency);
+  const val=getInvValue(parseInt(ii));
+  const sharesSelling=isAuto?(parseFloat(document.getElementById('si-shares-sell').value)||0):0;
+  const pctSelling=isAuto&&inv.shares?(sharesSelling/inv.shares*100):(val?(inCZK/val*100):0);
+  const investedReduction=inv.invested*(Math.min(pctSelling,100)/100);
+  const profit=inCZK-investedReduction;
+
+  hint.innerHTML='Přičte '+fmt(amount,acc.currency)+' na účet '+escHtml(acc.name)+
+    (acc.currency!=='CZK'?' (≈ '+fmt(inCZK)+')':'')+
+    '. Prodej '+Math.min(pctSelling,100).toFixed(1)+' % investice.'+
+    ' <span style="color:'+(profit>=0?'var(--green)':'var(--red)')+'">Realizovaný '+(profit>=0?'zisk':'ztráta')+': '+(profit>=0?'+':'')+fmt(profit)+'</span>';
+}
+
+function saveSellInv(){
+  const ai=document.getElementById('si-acc').value;
+  const ii=document.getElementById('si-inv').value;
+  if(ai===''||ii===''){toast('Vyber investici i účet.','warn');return;}
+  const acc=accounts[parseInt(ai)];
+  const inv=investments[parseInt(ii)];
+  if(!acc||!inv){toast('Neplatný účet nebo investice.','warn');return;}
+  const isAuto=!!(inv&&inv.apiSymbol);
+
+  const amount=parseFloat(isAuto
+    ?document.getElementById('si-amount').value
+    :document.getElementById('si-amount-m').value);
+  const date=isAuto
+    ?document.getElementById('si-date-auto').value
+    :document.getElementById('si-date').value;
+  const note=(isAuto
+    ?document.getElementById('si-note-auto').value
+    :document.getElementById('si-note').value).trim()||'Prodej investice';
+  if(isNaN(amount)||amount<=0){toast('Zadej platnou částku prodeje.','warn');return;}
+  if(!date){toast('Zadej datum prodeje.','warn');return;}
+
+  const inCZK=toCZK(amount,acc.currency);
+  const prevInvValue=getInvValue(parseInt(ii));
+
+  // Vypočítat procento prodeje
+  let sellPct=0;
+  let sharesSold=0;
+  if(isAuto&&inv.shares){
+    sharesSold=parseFloat(document.getElementById('si-shares-sell').value)||0;
+    if(sharesSold<=0){toast('Zadej počet kusů k prodeji.','warn');return;}
+    if(sharesSold>inv.shares+0.0001){toast('Nemáš tolik kusů (max '+inv.shares.toFixed(4)+').','warn');return;}
+    sharesSold=Math.min(sharesSold,inv.shares);
+    sellPct=sharesSold/inv.shares;
+  } else {
+    sellPct=prevInvValue>0?Math.min(1,inCZK/prevInvValue):1;
+  }
+
+  // 1. Snížit počet kusů
+  if(isAuto&&inv.shares){
+    inv.shares=Math.max(0,inv.shares-sharesSold);
+    if(inv.shares<0.0001) inv.shares=0;
+  }
+
+  // 2. Snížit investovanou částku proporcionálně
+  const investedReduction=inv.invested*sellPct;
+  inv.invested=Math.max(0,inv.invested-investedReduction);
+
+  // 3. Snížit hodnotu
+  if(isAuto){
+    inv.value=Math.max(0,(inv.value||0)*(1-sellPct));
+  } else {
+    inv.value=Math.max(0,(inv.value||0)-inCZK);
+  }
+
+  // 4. Vytvořit příjmovou transakci
+  transactions.unshift({
+    desc:note+' ← '+inv.ticker,
+    amount:amount,
+    date:date,
+    type:'prijem',
+    cat:'INVESTICE',
+    cur:acc.currency,
+    accIdx:String(ai),
+    invIdx:String(ii)
+  });
+
+  // 5. Zaznamenat prodej do historie
+  if(!inv.history) inv.history=[];
+  const newInvValue=getInvValue(parseInt(ii));
+  const saleEntry={date, value:newInvValue, prevValue:prevInvValue, note, isSale:true};
+  if(sharesSold) saleEntry.sharesSold=sharesSold;
+  inv.history.push(saleEntry);
+  inv.history.sort((a,b)=>a.date.localeCompare(b.date));
+
+  // 6. Uložit a aktualizovat UI
+  recordSnapshot();
+  recordInvSnapshot();
+  saveToStorage();
+  closeModal('sell-inv');
+  markDirty('dashboard','accounts','investments','transactions');
+
+  // 7. Přebudovat historii z API pokud zbývají kusy
+  if(isAuto&&inv.apiSymbol&&inv.shares>0&&inv.startDate){
+    const btn=document.getElementById('btn-auto-update');
+    if(btn){btn.textContent='⟳ Načítám...';btn.disabled=true;}
+    buildInvHistoryFromAPI(parseInt(ii)).then(ok=>{
+      if(btn){btn.textContent='⟳ Aktualizovat ceny';btn.disabled=false;}
+      if(ok){saveToStorage();markDirty('investments');}
+    });
+  }
+
+  const profit=inCZK-investedReduction;
+  toast('Prodáno: '+fmt(amount,acc.currency)+' → '+escHtml(acc.name)+(profit>=0?' (zisk +'+fmt(profit)+')':' (ztráta '+fmt(profit)+')'),'ok',4000);
 }

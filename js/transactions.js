@@ -364,7 +364,7 @@ function getInvValue(i){
   const hist=inv.history||[];
   let baseValue=inv.value||0, lastManualDate='';
   for(let j=hist.length-1;j>=0;j--){
-    if(!hist[j].isPurchase){baseValue=hist[j].value;lastManualDate=hist[j].date;break;}
+    if(!hist[j].isPurchase&&!hist[j].isSale){baseValue=hist[j].value;lastManualDate=hist[j].date;break;}
   }
   // Přičteme vklady (z transakcí) po poslední ruční aktualizaci
   const si=String(i);
@@ -374,7 +374,14 @@ function getInvValue(i){
       (t.invIdx==null&&inv.ticker&&t.desc&&t.desc.includes(inv.ticker))
     ))
     .reduce((s,t)=>s+toCZK(t.amount,t.cur||'CZK'),0);
-  return baseValue+purchasesSince;
+  // Odečteme prodeje po poslední ruční aktualizaci
+  const salesSince=transactions
+    .filter(t=>t.type==='prijem'&&t.cat==='INVESTICE'&&t.date&&(!lastManualDate||t.date>lastManualDate)&&(
+      (t.invIdx!=null&&String(t.invIdx)===si)||
+      (t.invIdx==null&&inv.ticker&&t.desc&&t.desc.includes(inv.ticker))
+    ))
+    .reduce((s,t)=>s+toCZK(t.amount,t.cur||'CZK'),0);
+  return baseValue+purchasesSince-salesSince;
 }
 
 function buildBalanceHistory(){
