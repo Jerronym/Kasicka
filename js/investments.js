@@ -1226,7 +1226,7 @@ async function autoUpdatePrices(){
 function resetInvestments(){
   if(!confirm('Smazat vsechny investice a investicni transakce? Nejdrive exportuj zalohu pres Export JSON!')) return;
   investments=[];
-  transactions=transactions.filter(t=>!(t.type==='vydaj'&&t.cat==='INVESTICE'));
+  transactions=transactions.filter(t=>!(t.cat==='INVESTICE'&&(t.type==='vydaj'||t.type==='prijem')));
   invChartFilter.clear();
   saveToStorage();
   markDirty('investments','dashboard');
@@ -1679,11 +1679,9 @@ function saveSellInv(){
   const investedReduction=inv.invested*sellPct;
   inv.invested=Math.max(0,inv.invested-investedReduction);
 
-  // 3. Snížit hodnotu
+  // 3. Snížit hodnotu (jen u API investic — u ručních to řeší getInvValue přes salesSince)
   if(isAuto){
     inv.value=Math.max(0,(inv.value||0)*(1-sellPct));
-  } else {
-    inv.value=Math.max(0,(inv.value||0)-inCZK);
   }
 
   // 4. Vytvořit příjmovou transakci
