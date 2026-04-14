@@ -38,6 +38,10 @@
 - Test the affected section (dashboard, transactions, accounts, investments, budget)
 - Verify data persists after page reload
 
+## Past Mistakes (Learn From These)
+- **Graph ignored sales**: `renderInvChart()` filtered only `type==='vydaj'` transactions — sales (`type==='prijem'`) were invisible to the invested line. When adding new transaction types, always check graph/chart filters too.
+- **Missing metadata on history entries**: `saveSellInv()` didn't store `investedReduction` on the sale history entry, making it impossible for the graph to reconstruct cost basis changes. When modifying data, store enough context for all consumers (graphs, portfolio, exports).
+
 ## Reference
 See .claude/rules/ for detailed reference:
 - architecture.md — script order, boot sequence, render pipeline, persistence flow
