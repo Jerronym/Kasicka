@@ -151,13 +151,12 @@ async function fetchPriceForModal(){
     } else {
       // Fallback: historická data ze Stooq/Yahoo (NE aktuální cenu!)
       try{
-        const hist=await Promise.any([
-          fetchStooqHistory(symbol, date).then(r=>{if(!r||!r.length)throw 0;return r;}),
-          fetchYahooHistory(symbol, date).then(r=>{if(!r||!r.length)throw 0;return r;})
+        const histResult=await Promise.any([
+          fetchStooqHistory(symbol, date).then(r=>{if(!r||!r.values.length)throw 0;return r;}),
+          fetchYahooHistory(symbol, date).then(r=>{if(!r||!r.values.length)throw 0;return r;})
         ]);
-        if(hist&&hist.length){
-          const isEur=/\.[A-Z]{2,3}$/.test(symbol);
-          result={price:hist[0].close, currency:isEur?'EUR':'USD', source:'history-fallback'};
+        if(histResult&&histResult.values.length){
+          result={price:histResult.values[0].close, currency:histResult.currency, source:'history-fallback'};
         }
       }catch(e){console.warn('Fallback historie selhala pro',symbol,e.message);result=null;}
     }
@@ -895,7 +894,8 @@ async function fetchTwelveHistory(symbol, fromDate, _retries=2){
       const d=await r.json();
       if(d.code===429){continue;}
       if(d.code||!d.values) return null;
-      return d.values.map(v=>({date:v.datetime, close:parseFloat(v.close)})).filter(v=>v.close>0);
+      const currency=d.meta?.currency||'USD';
+      return{values:d.values.map(v=>({date:v.datetime, close:parseFloat(v.close)})).filter(v=>v.close>0), currency};
     }catch(e){
       if(attempt===_retries){console.warn('fetchTwelveHistory selhal:',symbol,e.message);return null;}
     }
@@ -1039,7 +1039,14 @@ async function fetchStooqHistory(symbol, fromDate){
     if(!r) return null;
     const text=await r.text();
     if(text.startsWith('<')) return null; // HTML chybová stránka
-    return parseStooqCsv(text, fromDate);
+    const parsed=parseStooqCsv(text, fromDate);
+    if(!parsed) return null;
+    const suffix=(symbol.split('.')[1]||'').toUpperCase();
+    let currency='USD';
+    if(['DE','F','PA','AS','MI','MC','BR','VI','HE','LS','WA'].includes(suffix)) currency='EUR';
+    else if(['L','IL'].includes(suffix)) currency='GBP';
+    else if(suffix==='UK') currency='GBp';
+    return{values:parsed, currency};
   }catch(e){console.warn('fetchStooqHistory selhal:',symbol,e.message);return null;}
 }
 
@@ -1059,7 +1066,9 @@ async function fetchYahooHistory(symbol, fromDate){
     const data=timestamps
       .map((ts,i)=>{const d=new Date(ts*1000);return{date:`${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`,close:closes[i]};})
       .filter(d=>d.close&&!isNaN(d.close)&&d.close>0);
-    return data.length?data:null;
+    if(!data.length) return null;
+    const currency=result.meta?.currency||'USD';
+    return{values:data, currency};
   }catch(e){console.warn('fetchYahooHistory selhal:',symbol,e.message);return null;}
 }
 
@@ -1091,19 +1100,20 @@ async function buildInvHistoryFromAPI(invIdx){
   const isCrypto=cryptoSymbols.includes(inv.apiSymbol.toUpperCase());
 
   let rawData=null;
-  let isEur=false; // určíme níže podle zdroje dat
+  let currency='CZK'; // CoinGecko vrací CZK, ostatní nastaví z API
   if(isCrypto){
     rawData=await fetchCoinGeckoHistory(inv.apiSymbol, inv.startDate);
   } else {
-    isEur=/\.[A-Z]{2,3}$/.test(inv.apiSymbol);
     // Twelve Data jako primární, Stooq/Yahoo jako fallback
-    rawData=await fetchTwelveHistory(inv.apiSymbol, inv.startDate);
+    const tdResult=await fetchTwelveHistory(inv.apiSymbol, inv.startDate);
+    if(tdResult){rawData=tdResult.values;currency=tdResult.currency;}
     if(!rawData){
       try{
-        rawData=await Promise.any([
+        const fallback=await Promise.any([
           fetchYahooHistory(inv.apiSymbol, inv.startDate).then(r=>{if(!r)throw 0;return r;}),
           fetchStooqHistory(inv.apiSymbol, inv.startDate).then(r=>{if(!r)throw 0;return r;})
         ]);
+        rawData=fallback.values;currency=fallback.currency;
       }catch(e){console.warn('History fallback selhal pro',inv.apiSymbol);rawData=null;}
     }
   }
@@ -1131,8 +1141,10 @@ async function buildInvHistoryFromAPI(invIdx){
   // Každý obchodní den = jeden záznam v historii
   const newHistory=rawData.map(({date,close})=>{
     let priceCzk=close;
-    if(isEur) priceCzk=close*eurCzkRate;
-    else if(!isCrypto) priceCzk=close*usdRate;
+    if(currency==='EUR') priceCzk=close*eurCzkRate;
+    else if(currency==='USD') priceCzk=close*usdRate;
+    else if(currency==='GBP') priceCzk=close*(eurCzkRate*1.17);
+    else if(currency==='GBp'||currency==='GBX') priceCzk=(close/100)*(eurCzkRate*1.17);
     const value=Math.round(priceCzk*getSharesAt(date)*100)/100;
     return{date,value,prevValue:0,note:`API: ${inv.apiSymbol}`};
   });
@@ -1144,7 +1156,13 @@ async function buildInvHistoryFromAPI(invIdx){
   if(newHistory.length){
     const last=newHistory[newHistory.length-1];
     inv.value=last.value;
-    inv.lastPrice=rawData[rawData.length-1].close;
+    const rawClose=rawData[rawData.length-1].close;
+    let lastPriceCzk=rawClose;
+    if(currency==='EUR') lastPriceCzk=rawClose*eurCzkRate;
+    else if(currency==='USD') lastPriceCzk=rawClose*usdRate;
+    else if(currency==='GBP') lastPriceCzk=rawClose*(eurCzkRate*1.17);
+    else if(currency==='GBp'||currency==='GBX') lastPriceCzk=(rawClose/100)*(eurCzkRate*1.17);
+    inv.lastPrice=lastPriceCzk;
     inv.lastPriceDate=last.date;
   }
   return true;
@@ -1319,18 +1337,18 @@ async function fetchIfaPriceAtDate(){
     // Twelve Data primární
     const tdResult=await fetchTwelvePriceAtDate(inv.apiSymbol, date);
     if(tdResult){
-      rawPrice=tdResult.price; rawCurrency='USD'; rawSource='twelvedata';
+      rawPrice=tdResult.price; rawCurrency=tdResult.currency||'USD'; rawSource='twelvedata';
     } else {
       const hist=await fetchStooqHistory(inv.apiSymbol, date);
-      if(hist&&hist.length){
-        rawPrice=hist[0].close;
-        rawCurrency=/\.[A-Z]{2,3}$/.test(inv.apiSymbol)?'EUR':'USD';
+      if(hist&&hist.values.length){
+        rawPrice=hist.values[0].close;
+        rawCurrency=hist.currency;
         rawSource='stooq';
       } else {
         const yhist=await fetchYahooHistory(inv.apiSymbol, date);
-        if(yhist&&yhist.length){
-          rawPrice=yhist[0].close;
-          rawCurrency=/\.[A-Z]{2,3}$/.test(inv.apiSymbol)?'EUR':'USD';
+        if(yhist&&yhist.values.length){
+          rawPrice=yhist.values[0].close;
+          rawCurrency=yhist.currency;
           rawSource='yahoo';
         }
       }
@@ -1564,18 +1582,18 @@ async function fetchSellPriceAtDate(){
   } else {
     const tdResult=await fetchTwelvePriceAtDate(inv.apiSymbol, date);
     if(tdResult){
-      rawPrice=tdResult.price; rawCurrency='USD'; rawSource='twelvedata';
+      rawPrice=tdResult.price; rawCurrency=tdResult.currency||'USD'; rawSource='twelvedata';
     } else {
       const hist=await fetchStooqHistory(inv.apiSymbol, date);
-      if(hist&&hist.length){
-        rawPrice=hist[0].close;
-        rawCurrency=/\.[A-Z]{2,3}$/.test(inv.apiSymbol)?'EUR':'USD';
+      if(hist&&hist.values.length){
+        rawPrice=hist.values[0].close;
+        rawCurrency=hist.currency;
         rawSource='stooq';
       } else {
         const yhist=await fetchYahooHistory(inv.apiSymbol, date);
-        if(yhist&&yhist.length){
-          rawPrice=yhist[0].close;
-          rawCurrency=/\.[A-Z]{2,3}$/.test(inv.apiSymbol)?'EUR':'USD';
+        if(yhist&&yhist.values.length){
+          rawPrice=yhist.values[0].close;
+          rawCurrency=yhist.currency;
           rawSource='yahoo';
         }
       }
