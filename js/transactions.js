@@ -358,10 +358,12 @@ function getBalance(i){
 function getInvValue(i){
   const inv=investments[i];
   if(!inv) return 0;
-  // API investice – preferujeme výpočet z kusů × poslední cena v CZK
+  // API investice – inv.value je vždy v CZK (nastavuje buildInvHistoryFromAPI, autoUpdatePrices atd.)
+  // shares×lastPrice je záloha, ale lastPrice může být v cizí měně (stará data)
   if(inv.apiSymbol){
+    if(inv.value) return inv.value;
     if(inv.shares&&inv.lastPrice) return Math.round(inv.shares*inv.lastPrice*100)/100;
-    return inv.value||0;
+    return 0;
   }
   // Ruční investice – odvozená hodnota
   const hist=inv.history||[];
