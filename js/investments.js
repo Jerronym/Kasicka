@@ -628,7 +628,7 @@ async function renderInvChart(){
     .filter(t=>t.type==='vydaj'&&t.cat==='INVESTICE'&&t.date)
     .filter(t=>{
       if(invChartFilter.size===0) return true;
-      if(t.invIdx!==undefined) return filteredIdxSet.has(String(t.invIdx));
+      if(t.invIdx!=null) return filteredIdxSet.has(String(t.invIdx));
       return filteredInvs.some(inv=>inv.ticker&&t.desc&&t.desc.includes(' '+inv.ticker));
     })
     .sort((a,b)=>a.date.localeCompare(b.date));
