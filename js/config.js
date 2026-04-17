@@ -64,6 +64,9 @@ function toggleDemoMode(){
   const cb2=document.getElementById('mobile-demo-toggle');
   if(cb1) cb1.checked=demoMode;
   if(cb2) cb2.checked=demoMode;
+  if(typeof initCategories==='function') initCategories();
+  if(typeof refreshCatSelect==='function') refreshCatSelect();
+  if(typeof refreshTxnFilters==='function') refreshTxnFilters();
   markDirty();
 }
 const today=()=>new Date().toISOString().split('T')[0];
