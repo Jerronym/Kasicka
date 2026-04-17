@@ -91,7 +91,7 @@ async function writeSyncFile(){
 
 
 // ── Verze dat a migrace ────────────────────────────────────
-const DATA_VERSION=5;
+const DATA_VERSION=6;
 
 function buildExportPayload(){
   return {
@@ -156,6 +156,8 @@ function buildExportPayload(){
     balanceHistory: balanceHistory,
     invHistory:     invHistory,
     invGroups:      invGroups.map(g=>({name:g.name||'',color:g.color||'#a78bfa',note:g.note||''})),
+    goals:          goals.map(g=>({name:g.name||'',icon:g.icon||'🎯',color:g.color||'#a78bfa',targetAmount:g.targetAmount||0,currency:g.currency||'CZK',currentAmount:g.currentAmount||0,linkedAccIdx:g.linkedAccIdx!==undefined?g.linkedAccIdx:'',deadline:g.deadline||'',note:g.note||''})),
+    wishlist:       wishlist.map(w=>({name:w.name||'',price:w.price||0,currency:w.currency||'CZK',priority:w.priority||'střední',url:w.url||'',note:w.note||'',addedDate:w.addedDate||'',bought:w.bought||false,boughtDate:w.boughtDate||''})),
   };
 }
 
@@ -222,6 +224,7 @@ function migrateImport(d){
   }
   // v4 → v5: recurringRules (legacy, nyní recurring je vlastnost transakce)
   if(v<5){
+
     // Migrace starých recurringRules na transakce s recurring polem
     if(d.recurringRules&&d.recurringRules.length){
       d.recurringRules.forEach(r=>{
@@ -236,6 +239,11 @@ function migrateImport(d){
     }
     delete d.recurringRules;
   }
+  // v5 → v6: přidány goals a wishlist
+  if(v<6){
+    if(!d.goals) d.goals=[];
+    if(!d.wishlist) d.wishlist=[];
+  }
   return d;
 }
 
@@ -249,6 +257,8 @@ function applyImport(d){
   categories=    (d.categories||[]).map(c=>({name:'',color:'#8b92a8',icon:'📦',...c}));
   balanceHistory=d.balanceHistory||[];
   invHistory=    d.invHistory||[];
+  goals=         (d.goals||[]).map(g=>({name:'',icon:'🎯',color:'#a78bfa',targetAmount:0,currency:'CZK',currentAmount:0,linkedAccIdx:'',deadline:'',note:'',...g}));
+  wishlist=      (d.wishlist||[]).map(w=>({name:'',price:0,currency:'CZK',priority:'střední',url:'',note:'',addedDate:'',bought:false,boughtDate:'',...w}));
 }
 
 // ── Export / Import JSON ───────────────────────────────────

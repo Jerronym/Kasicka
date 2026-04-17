@@ -45,6 +45,7 @@
   <button class="nav-item" onclick="showSection('accounts')" id="nav-accounts"><span class="nav-icon">▣</span><span class="nav-label">Účty</span></button>
   <button class="nav-item" onclick="showSection('investments')" id="nav-investments"><span class="nav-icon">▲</span><span class="nav-label">Investice</span></button>
   <button class="nav-item" onclick="showSection('budget')" id="nav-budget"><span class="nav-icon">◎</span><span class="nav-label">Rozpočet</span></button>
+  <button class="nav-item" onclick="showSection('goals')" id="nav-goals"><span class="nav-icon">🎯</span><span class="nav-label">Plánování</span></button>
   <button class="nav-item" onclick="showSection('categories')" id="nav-categories"><span class="nav-icon">⊞</span><span class="nav-label">Kategorie</span></button>
   <div class="nav-group" id="nav-group-links">
     <button class="nav-item" onclick="toggleSharingNav()" id="nav-links"><span class="nav-icon">👥</span><span class="nav-label">Sdílení</span><span class="nav-chevron" id="nav-links-chevron">›</span></button>
@@ -86,6 +87,7 @@
 <div class="mobile-menu-overlay" id="mobile-menu" onclick="if(event.target===this)closeMobileMenu()">
   <div class="mobile-menu">
     <div class="mobile-menu-title">Více</div>
+    <button class="mobile-menu-item" onclick="closeMobileMenu();showSection('goals')"><span>🎯</span> Plánování</button>
     <button class="mobile-menu-item" onclick="closeMobileMenu();showSection('categories')"><span>⊞</span> Kategorie</button>
     <button class="mobile-menu-item" onclick="closeMobileMenu();showSection('links')"><span>👥</span> Sdílení</button>
     <div id="mobile-links-children"></div>
@@ -361,6 +363,25 @@
     <div id="budget-list" style="display:flex;flex-direction:column;gap:12px;"></div>
     <div id="budget-empty" style="padding:24px;text-align:center;color:var(--text-secondary);font-size:13px;">Přidej kategorie rozpočtu!</div>
   </div>
+  <div class="section" id="section-goals">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div class="page-title">Plánování</div>
+      <button class="btn" id="goals-add-btn" onclick="openGoalModal(-1)">+ Přidat cíl</button>
+    </div>
+    <div class="tabs" style="margin-bottom:16px;">
+      <button class="tab active" id="tab-goals" onclick="switchGoalsTab('goals')">🎯 Cíle</button>
+      <button class="tab" id="tab-wishes" onclick="switchGoalsTab('wishes')">✨ Přání</button>
+    </div>
+    <div id="goals-tab-content">
+      <div id="goals-list" style="display:flex;flex-direction:column;gap:12px;"></div>
+      <div id="goals-empty" style="display:none;padding:24px;text-align:center;color:var(--text-secondary);font-size:13px;">Přidej první spořící cíl! 🎯</div>
+    </div>
+    <div id="wishes-tab-content" style="display:none;">
+      <div id="wishes-list" style="display:flex;flex-direction:column;gap:12px;"></div>
+      <div id="wishes-empty" style="display:none;padding:24px;text-align:center;color:var(--text-secondary);font-size:13px;">Přidej první přání do seznamu! ✨</div>
+    </div>
+  </div>
+
   <div class="section" id="section-categories">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
       <div><div class="page-title">Kategorie</div><div class="page-sub">Správa kategorií transakcí</div></div>
@@ -937,6 +958,73 @@
 </div>
 
 
+<!-- MODAL CÍL -->
+<div class="modal-overlay" id="modal-goal">
+  <div class="modal"><h3 id="goal-modal-title">Nový cíl</h3>
+    <div class="form-row">
+      <div class="form-group" style="flex:1"><label>Název</label><input type="text" id="goal-name" placeholder="např. Nové auto, Dovolená..."></div>
+    </div>
+    <div class="form-group"><label>Ikona</label>
+      <div id="goal-icon-picker" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;max-height:90px;overflow-y:auto;"></div>
+    </div>
+    <div class="form-group"><label>Barva</label>
+      <div id="goal-color-picker" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Cílová částka</label><input type="number" id="goal-target" placeholder="0" min="0" step="100"></div>
+      <div class="form-group"><label>Měna</label>
+        <select id="goal-currency"><option value="CZK">CZK</option><option value="EUR">EUR</option><option value="USD">USD</option></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Aktuálně naspořeno</label><input type="number" id="goal-current" placeholder="0" min="0" step="100"></div>
+      <div class="form-group"><label>Deadline (volitelně)</label><input type="date" id="goal-deadline"></div>
+    </div>
+    <div class="form-group"><label>Propojený účet (volitelně)</label>
+      <select id="goal-account"><option value="">— bez účtu —</option></select>
+    </div>
+    <div class="form-group"><label>Poznámka (volitelně)</label>
+      <textarea id="goal-note" rows="2" placeholder="Popis, motivace..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="goal-delete-btn" onclick="deleteGoal()" style="display:none">Smazat</button>
+      <button class="btn btn-outline" onclick="closeModal('goal')">Zrušit</button>
+      <button class="btn" onclick="saveGoal()">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PŘÁNÍ -->
+<div class="modal-overlay" id="modal-wish">
+  <div class="modal"><h3 id="wish-modal-title">Nové přání</h3>
+    <div class="form-row">
+      <div class="form-group" style="flex:2"><label>Název</label><input type="text" id="wish-name" placeholder="např. MacBook Pro, Notebook..."></div>
+      <div class="form-group"><label>Priorita</label>
+        <select id="wish-priority">
+          <option value="vysoká">🔴 Vysoká</option>
+          <option value="střední" selected>🟡 Střední</option>
+          <option value="nízká">🟢 Nízká</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Cena (volitelně)</label><input type="number" id="wish-price" placeholder="0" min="0" step="10"></div>
+      <div class="form-group"><label>Měna</label>
+        <select id="wish-currency"><option value="CZK">CZK</option><option value="EUR">EUR</option><option value="USD">USD</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label>URL odkaz (volitelně)</label><input type="url" id="wish-url" placeholder="https://..."></div>
+    <div class="form-group"><label>Poznámka (volitelně)</label>
+      <textarea id="wish-note" rows="2" placeholder="Proč chceš tento předmět..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="wish-delete-btn" onclick="deleteWish()" style="display:none">Smazat</button>
+      <button class="btn btn-outline" onclick="closeModal('wish')">Zrušit</button>
+      <button class="btn" onclick="saveWish()">Uložit</button>
+    </div>
+  </div>
+</div>
+
 <script src="js/config.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/categories.js"></script>
@@ -945,6 +1033,7 @@
 <script src="js/accounts.js"></script>
 <script src="js/investments.js"></script>
 <script src="js/budget.js"></script>
+<script src="js/goals.js"></script>
 <script src="js/dashboard.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/auth.js"></script>

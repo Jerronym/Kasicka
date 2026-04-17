@@ -1,10 +1,11 @@
 // Kasička — globální proměnné a konstanty
 
 let transactions=[],accounts=[],investments=[],budgets=[],categories=[],invGroups=[];
+let goals=[],wishlist=[];
 let txnFilter='vse';
 let activeTagFilter=null;
 let currentTags=[];
-let editingTxn=-1,editingAcc=-1,editingInv=-1,editingBud=-1;
+let editingTxn=-1,editingAcc=-1,editingInv=-1,editingBud=-1,editingGoal=-1,editingWish=-1;
 let recurringMode=false;
 let balanceHistory=[],invHistory=[];
 let chartBalance=null,chartAcc=null,chartInv=null,chartCategories=null,chartIncome=null,chartTrend=null;
@@ -128,7 +129,7 @@ let saveTimer=null;
 // ── Dirty-flag systém pro výkon ─────────────────────────
 // Místo kaskády renderTxns();renderAccounts();renderDashboard();renderInvestments();
 // se označí co je "dirty" a renderuje se jen viditelná sekce.
-const _dirty={dashboard:false,transactions:false,accounts:false,investments:false,budget:false,categories:false,links:false,'links-group':false};
+const _dirty={dashboard:false,transactions:false,accounts:false,investments:false,budget:false,categories:false,links:false,'links-group':false,goals:false};
 let _activeSection='dashboard';
 let _renderRAF=null;
 
@@ -156,6 +157,7 @@ function _renderVisible(){
   else if(s==='categories' && typeof renderCategories==='function') renderCategories();
   else if(s==='links' && typeof renderLinks==='function') renderLinks();
   else if(s==='links-group' && typeof renderSharedGroupDetail==='function') renderSharedGroupDetail();
+  else if(s==='goals' && typeof renderGoalsSection==='function') renderGoalsSection();
 }
 
 // ── Sdílený výpočet rozpočtu (budget.js + dashboard.js) ────
