@@ -10,7 +10,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script>(function(){var t=localStorage.getItem('kasicka_theme');if(t)document.documentElement.dataset.theme=t;})()</script>
+<script>(function(){var t=localStorage.getItem('kasicka_theme');if(t)document.documentElement.dataset.theme=t;if(localStorage.getItem('kasicka_demo')==='1')document.documentElement.dataset.demo='true';})()</script>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -67,6 +67,10 @@
         <option value="cyberpunk">Cyberpunk</option>
       </select>
     </div>
+    <div style="padding:4px 10px;display:flex;align-items:center;gap:8px;">
+      <span style="font-size:13px;">👁</span>
+      <label class="nav-label" style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="demo-toggle" onchange="toggleDemoMode()"> Demo režim</label>
+    </div>
     <div id="user-info" style="display:none;margin-top:4px;">
       <span style="font-size:16px;">👤</span>
       <span id="user-email" class="nav-label"></span>
@@ -101,6 +105,10 @@
         <option value="sunset">Warm Sunset</option>
         <option value="cyberpunk">Cyberpunk</option>
       </select>
+    </div>
+    <div class="mobile-menu-item" style="gap:10px;">
+      <span>👁</span>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="checkbox" id="mobile-demo-toggle" onchange="toggleDemoMode()"> Demo režim</label>
     </div>
     <div class="mobile-menu-divider"></div>
     <button class="mobile-menu-item" onclick="closeMobileMenu();exportData()"><span>↑</span> Export JSON</button>

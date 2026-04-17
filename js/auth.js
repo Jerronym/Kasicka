@@ -117,6 +117,11 @@ function showApp(user){
   if(emailEl) emailEl.textContent=user.email;
   if(userInfoEl) userInfoEl.style.display='flex';
   if(typeof updateMobileUserInfo==='function') updateMobileUserInfo();
+  demoMode=localStorage.getItem('kasicka_demo')==='1';
+  const cb1=document.getElementById('demo-toggle');
+  const cb2=document.getElementById('mobile-demo-toggle');
+  if(cb1) cb1.checked=demoMode;
+  if(cb2) cb2.checked=demoMode;
   showLoading('Načítání dat...');
   loadFromCloud().finally(hideLoading);
 }

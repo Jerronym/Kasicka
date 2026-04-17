@@ -2,6 +2,7 @@
 
 let transactions=[],accounts=[],investments=[],budgets=[],categories=[],invGroups=[];
 let goals=[],wishlist=[];
+let demoMode=false;
 let txnFilter='vse';
 let activeTagFilter=null;
 let currentTags=[];
@@ -38,11 +39,32 @@ async function fetchLiveRates(){
     console.warn('Nepodařilo se načíst kurzy, použity fallback hodnoty.',e.message);
   }
 }
+function demoNum(n){
+  if(!demoMode) return n;
+  const sign=n<0?-1:1;
+  const abs=Math.abs(n);
+  if(abs<0.01) return 0;
+  const mag=Math.pow(10,Math.floor(Math.log10(abs)));
+  const seed=Math.round(abs*100);
+  const pseudo=((seed*7919+104729)%9000+1000)/1000;
+  return sign*+( pseudo*mag).toFixed(2);
+}
 const fmt=(n,cur='CZK')=>{
-  if(cur==='EUR') return n.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
-  if(cur==='USD') return n.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' $';
-  return n.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' Kč';
+  const v=demoMode?demoNum(n):n;
+  if(cur==='EUR') return v.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  if(cur==='USD') return v.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' $';
+  return v.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' Kč';
 };
+function toggleDemoMode(){
+  demoMode=!demoMode;
+  localStorage.setItem('kasicka_demo',demoMode?'1':'');
+  document.documentElement.dataset.demo=demoMode?'true':'';
+  const cb1=document.getElementById('demo-toggle');
+  const cb2=document.getElementById('mobile-demo-toggle');
+  if(cb1) cb1.checked=demoMode;
+  if(cb2) cb2.checked=demoMode;
+  markDirty();
+}
 const today=()=>new Date().toISOString().split('T')[0];
 
 // CSS proměnné pro Chart.js (neumí var() přímo)
