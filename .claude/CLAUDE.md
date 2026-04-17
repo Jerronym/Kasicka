@@ -42,6 +42,7 @@
 - **Graph ignored sales**: `renderInvChart()` filtered only `type==='vydaj'` transactions — sales (`type==='prijem'`) were invisible to the invested line. When adding new transaction types, always check graph/chart filters too.
 - **Missing metadata on history entries**: `saveSellInv()` didn't store `investedReduction` on the sale history entry, making it impossible for the graph to reconstruct cost basis changes. When modifying data, store enough context for all consumers (graphs, portfolio, exports).
 - **Currency regex instead of API metadata**: `buildInvHistoryFromAPI` used `isEur=/\.[A-Z]{2,3}$/.test(symbol)` to guess currency, ignoring the actual `resp.meta.currency` from Twelve Data. Multiple places hardcoded `rawCurrency='USD'` even though `fetchTwelvePriceAtDate` returns the real currency. When fetching data from an API that provides metadata, always use the metadata — never guess with regex.
+- **Grep pattern missed diacritics variant**: When patching all `toLocaleString` bypasses for demo mode, searched for `toLocaleString.*Kč` but `investments.js` chart used `' Kc'` (ASCII, no háček) — pattern didn't match, bypass was missed. When grepping for string patterns that may have encoding or diacritics variants, always also search the ASCII fallback form (e.g. search both `Kč` and `Kc`).
 
 ## Reference
 See .claude/rules/ for detailed reference:
