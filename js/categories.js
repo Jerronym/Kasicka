@@ -25,7 +25,7 @@ function renderTagQuickPicks(){
   if(!el) return;
   const allTags=getAllTags();
   if(!allTags.length){el.innerHTML='';return;}
-  el.innerHTML=allTags.slice(0,20).map(tag=>{
+  el.innerHTML=allTags.map(tag=>{
     const active=currentTags.includes(tag);
     return`<span onclick="quickAddTag('${escAttr(tag)}')"
       style="padding:3px 9px;border-radius:20px;font-size:11.5px;cursor:pointer;user-select:none;
