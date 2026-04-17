@@ -96,7 +96,7 @@ tr:hover td{background:var(--hover-bg);}
 .tag-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;background:var(--tag-bg);color:var(--text-secondary);border:1px solid var(--card-border);}
 .tag-badge-rm{background:none;border:none;color:inherit;cursor:pointer;padding:0;font-size:12px;line-height:1;opacity:0.6;}
 .tag-badge-rm:hover{opacity:1;}
-.tag-input-wrap{display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:var(--card-bg);border:1px solid var(--card-border);border-radius:8px;padding:7px 10px;min-height:40px;cursor:text;}
+.tag-input-wrap{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;background:var(--card-bg);border:1px solid var(--card-border);border-radius:8px;padding:7px 10px;min-height:70px;cursor:text;}
 .tag-input-wrap:focus-within{border-color:var(--accent);}
 .tag-input-wrap input{background:none;border:none;outline:none;color:var(--text-primary);font-size:13px;flex:1;min-width:100px;}
 .tag-suggestions{position:absolute;background:var(--sidebar-bg);border:1px solid var(--card-border);border-radius:8px;margin-top:2px;z-index:200;width:100%;max-height:160px;overflow-y:auto;}
