@@ -118,7 +118,11 @@ function renderWishlist() {
   empty.style.display = 'none';
   const active = wishlist.filter(w => !w.bought);
   const bought = wishlist.filter(w => w.bought);
-  const sorted = [...active].sort((a, b) => (WISH_PRIORITY_ORDER[a.priority] || 1) - (WISH_PRIORITY_ORDER[b.priority] || 1));
+  const sorted = [...active].sort((a, b) => {
+    const pd = (WISH_PRIORITY_ORDER[a.priority] ?? 1) - (WISH_PRIORITY_ORDER[b.priority] ?? 1);
+    if (pd !== 0) return pd;
+    return (a.price || 0) - (b.price || 0);
+  });
   let html = '';
   if (sorted.length) {
     html += sorted.map(w => {
