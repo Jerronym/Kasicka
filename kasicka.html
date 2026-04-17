@@ -985,11 +985,11 @@
       </div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label>Aktuálně naspořeno</label><input type="number" id="goal-current" placeholder="0" min="0" step="100"></div>
+      <div class="form-group" id="goal-current-wrap"><label>Aktuálně naspořeno</label><input type="number" id="goal-current" placeholder="0" min="0" step="100"></div>
       <div class="form-group"><label>Deadline (volitelně)</label><input type="date" id="goal-deadline"></div>
     </div>
     <div class="form-group"><label>Propojený účet (volitelně)</label>
-      <select id="goal-account"><option value="">— bez účtu —</option></select>
+      <select id="goal-account" onchange="toggleGoalCurrentField()"><option value="">— bez účtu —</option></select>
     </div>
     <div class="form-group"><label>Poznámka (volitelně)</label>
       <textarea id="goal-note" rows="2" placeholder="Popis, motivace..."></textarea>

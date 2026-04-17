@@ -54,7 +54,9 @@ function renderGoals() {
   empty.style.display = 'none';
   list.innerHTML = goals.map((g, i) => {
     const target = toCZK(g.targetAmount || 0, g.currency || 'CZK');
-    const current = toCZK(g.currentAmount || 0, g.currency || 'CZK');
+    const hasLinkedAcc = g.linkedAccIdx !== '' && g.linkedAccIdx !== undefined && g.linkedAccIdx !== null;
+    const rawCurrent = hasLinkedAcc ? getBalance(parseInt(g.linkedAccIdx)) : (g.currentAmount || 0);
+    const current = toCZK(rawCurrent, hasLinkedAcc ? (accounts[parseInt(g.linkedAccIdx)]?.currency || 'CZK') : (g.currency || 'CZK'));
     const pct = target > 0 ? Math.min(current / target * 100, 100) : 0;
     const remaining = Math.max(target - current, 0);
     let monthsHtml = '';
@@ -86,7 +88,7 @@ function renderGoals() {
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-          <span style="font-size:13px;font-weight:500;color:var(--text-secondary)">${fmt(g.currentAmount || 0, g.currency || 'CZK')} / ${fmt(g.targetAmount || 0, g.currency || 'CZK')}</span>
+          <span style="font-size:13px;font-weight:500;color:var(--text-secondary)">${fmt(rawCurrent, hasLinkedAcc ? (accounts[parseInt(g.linkedAccIdx)]?.currency || 'CZK') : (g.currency || 'CZK'))} / ${fmt(g.targetAmount || 0, g.currency || 'CZK')}</span>
           <button class="btn-edit" onclick="openGoalModal(${i})">Upravit</button>
         </div>
       </div>
@@ -182,6 +184,12 @@ function renderGoalColorPicker() {
   ).join('');
 }
 
+function toggleGoalCurrentField() {
+  const hasAcc = document.getElementById('goal-account').value !== '';
+  const wrap = document.getElementById('goal-current-wrap');
+  if (wrap) wrap.style.display = hasAcc ? 'none' : '';
+}
+
 function _fillGoalAccSelect() {
   const sel = document.getElementById('goal-account');
   if (!sel) return;
@@ -221,6 +229,7 @@ function openGoalModal(idx) {
   }
   renderGoalIconPicker();
   renderGoalColorPicker();
+  toggleGoalCurrentField();
   openModal('goal');
 }
 
