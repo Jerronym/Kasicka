@@ -136,6 +136,69 @@ function deleteBud(){
   markDirty('budget','dashboard');
 }
 
+function getBudgetTransactions(b){
+  const now=new Date(); now.setHours(0,0,0,0);
+  let range=null;
+  if(b.budType!=='cumulative'){
+    const period=b.period||'month';
+    let from;
+    if(period==='week'){from=new Date(now);from.setDate(from.getDate()-(from.getDay()||7)+1);}
+    else if(period==='year'){from=new Date(now.getFullYear(),0,1);}
+    else{from=new Date(now.getFullYear(),now.getMonth(),1);}
+    range={from,to:now};
+  }
+  const matchTxn=t=>{
+    if(b.trackMode==='tags'){
+      const tags=b.trackTags&&b.trackTags.length?b.trackTags:[];
+      if(!tags.length) return false;
+      const txnTags=Array.isArray(t.tags)?t.tags:(t.tag?[t.tag]:[]);
+      return tags.some(tag=>txnTags.includes(tag));
+    } else {
+      const cats=b.cats&&b.cats.length?b.cats:[b.name];
+      return cats.includes(t.cat);
+    }
+  };
+  const net=b.flowMode==='net';
+  return transactions.filter(t=>{
+    if(!matchTxn(t)) return false;
+    if(t.type==='prevod') return false;
+    if(!net&&t.type!=='vydaj') return false;
+    if(range){const d=new Date(t.date+'T12:00:00');return d>=range.from&&d<=range.to;}
+    return true;
+  }).sort((a,b)=>b.date.localeCompare(a.date));
+}
+
+function renderBudgetTxnList(i){
+  const b=budgets[i];
+  if(!b) return '';
+  const txns=getBudgetTransactions(b);
+  if(!txns.length) return '<div style="font-size:12.5px;color:var(--text-secondary);padding:8px 0 2px;text-align:center">Žádné transakce</div>';
+  return txns.map(t=>{
+    const sign=t.type==='prijem'?'+':'-';
+    const color=t.type==='prijem'?'var(--green)':'var(--red)';
+    const catBadge=typeof getCatBadge==='function'?getCatBadge(t.cat):'';
+    return `<div class="bud-txn-row">
+      <span class="bud-txn-date">${escHtml(t.date)}</span>
+      <span class="bud-txn-desc">${escHtml(t.desc||t.cat)}</span>
+      <span class="badge ${catBadge}" style="flex-shrink:0">${escHtml(t.cat||'')}</span>
+      <span class="bud-txn-amount" style="color:${color}">${sign}${fmt(demoNum(t.amount),t.cur)}</span>
+    </div>`;
+  }).join('');
+}
+
+function toggleBudgetDetail(i){
+  const detail=document.getElementById('bud-detail-'+i);
+  const chevron=document.getElementById('bud-chevron-'+i);
+  if(!detail) return;
+  const open=detail.style.display==='none';
+  if(open&&!detail.dataset.loaded){
+    detail.innerHTML=renderBudgetTxnList(i);
+    detail.dataset.loaded='1';
+  }
+  detail.style.display=open?'block':'none';
+  if(chevron) chevron.style.transform=open?'rotate(90deg)':'';
+}
+
 function getBudgetSpent(b){
   if(b.budType==='cumulative') return calcBudgetSpent(b, null);
   const now=new Date(); now.setHours(0,0,0,0);
@@ -170,18 +233,22 @@ function renderBudget(){
       const over=b.limit>0&&spent>b.limit;
       const trackInfo=(b.flowMode==='net'?'čistý tok · ':'')+( b.trackMode==='tags'?(b.trackTags&&b.trackTags.length?'štítky: '+b.trackTags.map(t=>escHtml(t)).join(', '):'—'):(b.cats&&b.cats.length?'kategorie: '+b.cats.map(c=>escHtml(c)).join(', '):'kategorie: '+escHtml(b.name)));
       return`<div class="card" style="display:flex;flex-direction:column;gap:8px">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
-          <div>
-            <span style="font-weight:500;font-size:14px">${escHtml(b.name)}</span>
-            <span style="font-size:11px;color:var(--text-secondary);margin-left:8px">${periodLabel(b)}</span>
+        <div onclick="toggleBudgetDetail(${i})" style="cursor:pointer;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+            <div>
+              <span id="bud-chevron-${i}" class="bud-chevron">▶</span>
+              <span style="font-weight:500;font-size:14px">${escHtml(b.name)}</span>
+              <span style="font-size:11px;color:var(--text-secondary);margin-left:8px">${periodLabel(b)}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:12.5px;color:${over?'var(--red)':'var(--text-secondary)'}">${demoNum(spent).toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})} / ${demoNum(b.limit).toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})} Kč</span>
+              <button class="btn-edit" onclick="event.stopPropagation();openBudModal(${i})">Upravit</button>
+            </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:12.5px;color:${over?'var(--red)':'var(--text-secondary)'}">${demoNum(spent).toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})} / ${demoNum(b.limit).toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})} Kč</span>
-            <button class="btn-edit" onclick="openBudModal(${i})">Upravit</button>
-          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${over?'var(--red)':b.color}"></div></div>
+          <div style="font-size:11.5px;color:var(--text-secondary)">${pct.toFixed(0)} % vyčerpáno${over?' — překročeno!':''} · ${trackInfo}</div>
         </div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${over?'var(--red)':b.color}"></div></div>
-        <div style="font-size:11.5px;color:var(--text-secondary)">${pct.toFixed(0)} % vyčerpáno${over?' — překročeno!':''} · ${trackInfo}</div>
+        <div id="bud-detail-${i}" class="bud-detail" style="display:none"></div>
       </div>`;
     }).join('');
   }
@@ -194,19 +261,23 @@ function renderBudget(){
       const over=b.limit>0&&spent>b.limit;
       const trackInfo=(b.flowMode==='net'?'čistý tok · ':'')+( b.trackMode==='tags'?(b.trackTags&&b.trackTags.length?'štítky: '+b.trackTags.map(t=>escHtml(t)).join(', '):'—'):(b.cats&&b.cats.length?'kategorie: '+b.cats.map(c=>escHtml(c)).join(', '):'kategorie: '+escHtml(b.name)));
       return`<div class="card" style="display:flex;flex-direction:column;gap:8px">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
-          <div>
-            <span style="font-weight:500;font-size:14px">${escHtml(b.name)}</span>
-            <span style="font-size:11px;color:var(--text-secondary);margin-left:8px">${periodLabel(b)}</span>
+        <div onclick="toggleBudgetDetail(${i})" style="cursor:pointer;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+            <div>
+              <span id="bud-chevron-${i}" class="bud-chevron">▶</span>
+              <span style="font-weight:500;font-size:14px">${escHtml(b.name)}</span>
+              <span style="font-size:11px;color:var(--text-secondary);margin-left:8px">${periodLabel(b)}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:15px;font-weight:600;color:${b.color}">${fmt(spent)}</span>
+              ${b.limit?`<span style="font-size:12px;color:${over?'var(--red)':'var(--text-secondary)'}">z ${demoNum(b.limit).toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})} Kč</span>`:''}
+              <button class="btn-edit" onclick="event.stopPropagation();openBudModal(${i})">Upravit</button>
+            </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:15px;font-weight:600;color:${b.color}">${fmt(spent)}</span>
-            ${b.limit?`<span style="font-size:12px;color:${over?'var(--red)':'var(--text-secondary)'}">z ${demoNum(b.limit).toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})} Kč</span>`:''}
-            <button class="btn-edit" onclick="openBudModal(${i})">Upravit</button>
-          </div>
+          ${pct!==null?`<div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${over?'var(--red)':b.color}"></div></div><div style="font-size:11.5px;color:var(--text-secondary)">${pct.toFixed(0)} % z limitu${over?' — překročeno!':''}</div>`:''}
+          <div style="font-size:11.5px;color:var(--text-secondary)">${trackInfo}</div>
         </div>
-        ${pct!==null?`<div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${over?'var(--red)':b.color}"></div></div><div style="font-size:11.5px;color:var(--text-secondary)">${pct.toFixed(0)} % z limitu${over?' — překročeno!':''}</div>`:''}
-        <div style="font-size:11.5px;color:var(--text-secondary)">${trackInfo}</div>
+        <div id="bud-detail-${i}" class="bud-detail" style="display:none"></div>
       </div>`;
     }).join('');
   }
