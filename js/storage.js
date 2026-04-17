@@ -2,6 +2,7 @@
 const LS_KEY='kasicka_v1';
 
 function saveToStorage(){
+  if(demoMode) return;
   try{
     localStorage.setItem(LS_KEY,JSON.stringify(buildExportPayload()));
     if(syncFileHandle){

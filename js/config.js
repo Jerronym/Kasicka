@@ -3,6 +3,7 @@
 let transactions=[],accounts=[],investments=[],budgets=[],categories=[],invGroups=[];
 let goals=[],wishlist=[];
 let demoMode=false;
+let _realDataBackup=null;
 let txnFilter='vse';
 let activeTagFilter=null;
 let currentTags=[];
@@ -39,24 +40,24 @@ async function fetchLiveRates(){
     console.warn('Nepodařilo se načíst kurzy, použity fallback hodnoty.',e.message);
   }
 }
-function demoNum(n){
-  if(!demoMode) return n;
-  const sign=n<0?-1:1;
-  const abs=Math.abs(n);
-  if(abs<0.01) return 0;
-  const mag=Math.pow(10,Math.floor(Math.log10(abs)));
-  const seed=Math.round(abs*100);
-  const pseudo=((seed*7919+104729)%9000+1000)/1000;
-  return sign*+( pseudo*mag).toFixed(2);
-}
+function demoNum(n){ return n; }
 const fmt=(n,cur='CZK')=>{
-  const v=demoMode?demoNum(n):n;
-  if(cur==='EUR') return v.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
-  if(cur==='USD') return v.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' $';
-  return v.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' Kč';
+  if(cur==='EUR') return n.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  if(cur==='USD') return n.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' $';
+  return n.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' Kč';
 };
 function toggleDemoMode(){
-  demoMode=!demoMode;
+  if(!demoMode){
+    // Zapnout demo: záloha reálných dat a načtení demo profilu
+    _realDataBackup=buildExportPayload();
+    applyImport(JSON.parse(JSON.stringify(DEMO_DATA)));
+    demoMode=true;
+  } else {
+    // Vypnout demo: obnovení reálných dat
+    if(_realDataBackup) applyImport(_realDataBackup);
+    _realDataBackup=null;
+    demoMode=false;
+  }
   localStorage.setItem('kasicka_demo',demoMode?'1':'');
   document.documentElement.dataset.demo=demoMode?'true':'';
   const cb1=document.getElementById('demo-toggle');

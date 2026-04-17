@@ -74,6 +74,11 @@ async function loadFromCloud(){
 
   const _initNavs=['acc-period-nav','inv-period-nav','period-nav'];
   _initNavs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='flex';});
+  // Pokud je demo mód aktivní, záloha reálných dat a načtení demo profilu
+  if(demoMode){
+    _realDataBackup=buildExportPayload();
+    applyImport(JSON.parse(JSON.stringify(DEMO_DATA)));
+  }
   markDirty();
   // Aktualizovat směnné kurzy z ČNB
   fetchLiveRates();
@@ -85,6 +90,7 @@ let _lastCloudSave=null; // timestamp posledního uložení do cloudu
 
 async function saveToCloud(){
   if(!currentUser) return;
+  if(demoMode) return;
   // Detekce konfliktu: zkontroluj, zda jiné zařízení neuložilo novější data
   if(_lastCloudSave){
     try{
@@ -138,6 +144,7 @@ function hideApp(){
 // Přepsat saveToStorage aby ukládal i do cloudu
 const _origSaveToStorage=saveToStorage;
 saveToStorage=function(){
+  if(demoMode) return;
   // Uložit lokálně (per uživatel)
   const lsKey=currentUser?LS_KEY+'_'+currentUser.id:LS_KEY;
   try{localStorage.setItem(lsKey,JSON.stringify(buildExportPayload()));}catch(e){console.warn('Chyba při ukládání do localStorage (auth):',e.message);}
