@@ -325,7 +325,7 @@ function saveWish() {
     toast('Přání uloženo.', 'success');
   }
   closeModal('wish');
-  markDirty('goals');
+  renderWishlist();
   saveToStorage();
 }
 
@@ -334,7 +334,7 @@ function deleteWish() {
   wishlist.splice(editingWish, 1);
   closeModal('wish');
   toast('Přání smazáno.', 'success');
-  markDirty('goals');
+  renderWishlist();
   saveToStorage();
 }
 
@@ -343,6 +343,6 @@ function markWishBought(idx) {
   wishlist[idx].bought = true;
   wishlist[idx].boughtDate = today();
   toast('Označeno jako koupeno! 🎉', 'success');
-  markDirty('goals');
+  renderWishlist();
   saveToStorage();
 }
