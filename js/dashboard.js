@@ -200,7 +200,7 @@ function renderBalanceChart(){
   const ctx=document.getElementById('chartBalance');
   if(!ctx) return;
   if(chartBalance){chartBalance.destroy();chartBalance=null;}
-  const currentTotal=accounts.reduce((s,a,i)=>s+(a.includeInTotal!==false?toCZK(getBalance(i),a.currency):0),0)+investments.reduce((s,inv,i)=>s+getInvValue(i),0);
+  const currentTotal=accounts.reduce((s,a,i)=>s+(a.includeInTotal!==false?toCZK(getBalance(i),a.currency):0),0);
   let history=buildBalanceHistory();
   if(history.length<2){
     const nowLbl=new Date().toLocaleDateString('cs-CZ',{day:'2-digit',month:'2-digit',year:'2-digit'});
