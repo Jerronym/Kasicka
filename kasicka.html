@@ -10,6 +10,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>(function(){var t=localStorage.getItem('kasicka_theme');if(t)document.documentElement.dataset.theme=t;if(localStorage.getItem('kasicka_demo')==='1')document.documentElement.dataset.demo='true';})()</script>
 <link rel="stylesheet" href="css/style.css">
 </head>
@@ -311,6 +312,7 @@
         <button class="btn btn-outline" id="btn-auto-update" onclick="autoUpdatePrices()" style="border-color:color-mix(in srgb, var(--accent) 40%, transparent);color:var(--accent);">⟳ Aktualizovat</button>
         <button class="btn btn-outline" onclick="openInvUpdateModal()" style="border-color:color-mix(in srgb, var(--amber) 40%, transparent);color:var(--amber);">↻ Zadat ručně</button>
         <button class="btn btn-outline" onclick="resetInvestments()" style="border-color:color-mix(in srgb, var(--red) 40%, transparent);color:var(--red);">⚠ Smazat vše</button>
+        <button class="btn btn-outline" onclick="openImportBrokerModal()" style="border-color:color-mix(in srgb, var(--accent) 40%, transparent);color:var(--accent);">📥 Import z brokera</button>
         <button class="btn" onclick="openInvModal(-1)">+ Přidat investici</button>
       </div>
     </div>
@@ -898,6 +900,79 @@
   </div>
 </div>
 
+<!-- MODAL IMPORT Z BROKERA -->
+<div class="modal-overlay" id="modal-import-broker">
+  <div class="modal" style="max-width:680px;width:95%;">
+    <h3>Import investic z brokera</h3>
+
+    <!-- Krok 1: výběr brokera + souboru -->
+    <div id="ib-step-1">
+      <div class="form-group">
+        <label>Broker</label>
+        <div style="display:flex;gap:16px;margin-top:4px;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13.5px;">
+            <input type="radio" name="ib-broker" value="xtb" checked style="width:15px;height:15px;"> XTB
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13.5px;">
+            <input type="radio" name="ib-broker" value="trading212" style="width:15px;height:15px;"> Trading212
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Soubor exportu (.xlsx nebo .csv)</label>
+        <input type="file" id="ib-file" accept=".csv,.xlsx,.xls,.txt" style="font-size:13px;padding:6px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:6px;color:var(--text-primary);width:100%;box-sizing:border-box;">
+      </div>
+      <div id="ib-status" style="font-size:12.5px;color:var(--text-secondary);min-height:18px;margin-bottom:12px;"></div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeImportBrokerModal()">Zrušit</button>
+        <button class="btn" onclick="ibLoadAndParse()">Načíst a analyzovat</button>
+      </div>
+    </div>
+
+    <!-- Krok 2: výběr účtu -->
+    <div id="ib-step-2" style="display:none;">
+      <div class="form-group">
+        <label>Z kterého účtu tyto investice pocházejí?</label>
+        <select id="ib-acc"></select>
+      </div>
+      <div id="ib-no-acc-warn" style="display:none;background:color-mix(in srgb,var(--amber) 15%,transparent);border:1px solid var(--amber);border-radius:8px;padding:10px 14px;font-size:12.5px;margin-bottom:12px;">
+        ⚠ Nemáš žádný účet. <button class="btn btn-sm btn-outline" onclick="closeImportBrokerModal();openAccModal(-1);">Přidat účet</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="showIbStep(1)">← Zpět</button>
+        <button class="btn" onclick="ibConfirmAccount()">Zobrazit transakce →</button>
+      </div>
+    </div>
+
+    <!-- Krok 3: tabulka + detekce duplikátů -->
+    <div id="ib-step-3" style="display:none;">
+      <div id="ib-txn-table" style="max-height:380px;overflow-y:auto;margin-bottom:10px;border:1px solid var(--card-border);border-radius:8px;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+        <div id="ib-summary" style="font-size:12px;color:var(--text-secondary);"></div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer;">
+          <input type="checkbox" id="ib-fetch-prices" style="width:13px;height:13px;">
+          Po importu načíst historické ceny z API
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="showIbStep(2)">← Zpět</button>
+        <button class="btn" id="ib-execute-btn" onclick="ibExecuteImport()" disabled>Importovat vybrané (0)</button>
+      </div>
+    </div>
+
+    <!-- Krok 4: výsledek -->
+    <div id="ib-step-4" style="display:none;">
+      <div id="ib-result-text" style="margin-bottom:14px;"></div>
+      <div id="ib-result-fetch-section" style="display:none;">
+        <div id="ib-fetch-progress" style="font-size:12.5px;color:var(--text-secondary);padding:8px 0;display:none;"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeImportBrokerModal()">Zavřít</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL ROZPOČET -->
 <div class="modal-overlay" id="modal-bud">
   <div class="modal"><h3 id="bud-modal-title">Nový rozpočet</h3>
@@ -1040,6 +1115,7 @@
 <script src="js/transactions.js"></script>
 <script src="js/accounts.js"></script>
 <script src="js/investments.js"></script>
+<script src="js/import-broker.js"></script>
 <script src="js/budget.js"></script>
 <script src="js/goals.js"></script>
 <script src="js/dashboard.js"></script>
