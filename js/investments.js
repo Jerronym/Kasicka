@@ -265,8 +265,17 @@ function saveInv(){
       }
     }
   } else {
+    const oldStartDate=investments[editingInv].startDate;
     investments[editingInv]={...investments[editingInv],ticker,apiSymbol,shares,type,invested,value,startDate,groupIdx,accIdx};
     invIdx=editingInv;
+    // Pokud se změnilo datum investice, aktualizuj i datum počáteční transakce a history záznamu
+    if(startDate&&startDate!==oldStartDate){
+      const initTxn=transactions.find(t=>t.invIdx===String(editingInv)&&t.cat==='INVESTICE'&&t.type==='vydaj'&&t.date===oldStartDate);
+      if(initTxn) initTxn.date=startDate;
+      const inv=investments[editingInv];
+      const initHist=inv.history?.find(h=>h.note==='Počáteční hodnota'&&h.date===oldStartDate);
+      if(initHist) initHist.date=startDate;
+    }
   }
   recordInvSnapshot();
   saveToStorage();
