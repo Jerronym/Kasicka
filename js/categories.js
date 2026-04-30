@@ -134,7 +134,7 @@ function renderCategories(){
   })).sort((a,b)=>b.totalSpent-a.totalSpent);
   grid.innerHTML=withStats.map(({c,i,usedCount,totalSpent})=>{
     return`<div class="card" style="display:flex;align-items:center;gap:12px;padding:10px 14px;">
-      <div style="width:36px;height:36px;border-radius:9px;background:${c.color}22;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;border:1px solid ${c.color}55;filter:grayscale(1);">${c.icon}</div>
+      <div style="width:36px;height:36px;border-radius:9px;background:${c.color};display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;"><span style="filter:grayscale(1) brightness(10);">${c.icon}</span></div>
       <div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;">
         <span style="font-weight:600;">${escHtml(c.name)}</span><span style="color:var(--text-secondary);font-size:11.5px;"> · ${usedCount} txn · ${fmt(totalSpent)}</span>
       </div>
