@@ -133,11 +133,10 @@ function renderCategories(){
     totalSpent:spendings[c.name]||0
   })).sort((a,b)=>b.totalSpent-a.totalSpent);
   grid.innerHTML=withStats.map(({c,i,usedCount,totalSpent})=>{
-    return`<div class="card" style="display:flex;align-items:center;gap:14px;padding:14px 16px;">
-      <div style="width:44px;height:44px;border-radius:10px;background:${c.color}22;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;border:1px solid ${c.color}44;">${c.icon}</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:600;letter-spacing:0.3px">${escHtml(c.name)}</div>
-        <div style="font-size:11.5px;color:var(--text-secondary);margin-top:2px">${usedCount} transakcí · ${fmt(totalSpent)}</div>
+    return`<div class="card" style="display:flex;align-items:center;gap:12px;padding:10px 14px;">
+      <div style="width:36px;height:36px;border-radius:9px;background:${c.color}22;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;border:1px solid ${c.color}55;filter:grayscale(1);">${c.icon}</div>
+      <div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;">
+        <span style="font-weight:600;">${escHtml(c.name)}</span><span style="color:var(--text-secondary);font-size:11.5px;"> · ${usedCount} txn · ${fmt(totalSpent)}</span>
       </div>
       <button class="btn-edit" onclick="openCatModal(${i})">Upravit</button>
     </div>`;

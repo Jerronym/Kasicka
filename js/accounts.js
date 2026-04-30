@@ -128,7 +128,7 @@ function renderAccounts(){
   list.innerHTML=accounts.map((a,i)=>{
     const excluded=a.includeInTotal===false;
     const bal=getBalance(i);
-    const col=bal>=0?(excluded?'var(--text-secondary)':'var(--accent)'):'var(--red)';
+    const col=bal>=0?(excluded?'var(--text-secondary)':'var(--green)'):'var(--red)';
     return`<div class="account-card" draggable="true" data-acc-idx="${i}"
       ondragstart="accDragStart(event,${i})"
       ondragover="accDragOver(event)"

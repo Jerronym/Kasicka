@@ -218,7 +218,7 @@ function renderBudget(){}
       </button>
 
       <!-- Sharing with dropdown -->
-      <div class="nav-sharing-wrap nav-group" id="nav-group-links-top" style="position:relative;">
+      <div class="nav-sharing-wrap nav-group" id="nav-group-links-top" style="position:relative;" onmouseenter="openSharingDropdown()" onmouseleave="closeSharingTopNav()">
         <button class="nav-item" onclick="toggleSharingTopNav()" id="nav-links-top">
           <span class="nav-icon">👥</span>
           <span class="nav-label">Sdílení</span>
@@ -387,6 +387,10 @@ function renderBudget(){}
           <div class="table-header"><span class="table-title">Rozpočet — přehled</span></div>
           <div id="dash-budget-preview" style="padding:16px 20px;display:flex;flex-direction:column;gap:14px;"></div>
         </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:-6px;">
+        <span style="font-size:12px;color:var(--text-secondary);">Účet:</span>
+        <select id="dash-cat-acc-filter" onchange="setDashCatAccFilter(this.value)" class="dd-select" style="font-size:12px;padding:3px 10px;border-radius:8px;min-width:120px;"></select>
       </div>
       <div class="two-col">
         <div class="chart-wrap">
@@ -1287,17 +1291,33 @@ window.showSection = function(id) {
 };
 
 // ── Sharing top nav dropdown ────────────────────────────
-function toggleSharingTopNav() {
+function populateSharingDropdown() {
+  const dd = document.getElementById('nav-links-children');
+  if(!dd) return;
+  let html = `<button class="dd-item" onclick="closeSharingTopNav();showSection('links');setTopActive('links')"><span class="dd-item-icon">👥</span>Sdílení</button>`;
+  if(typeof sharedGroupsList !== 'undefined' && sharedGroupsList.length) {
+    html += '<div class="dd-sep"></div>';
+    html += sharedGroupsList.map(g =>
+      `<button class="dd-item" onclick="closeSharingTopNav();openSharedGroupPage('${escAttr(g.id)}')">${escHtml(g.name)}</button>`
+    ).join('');
+  }
+  dd.innerHTML = html;
+}
+
+function openSharingDropdown() {
+  populateSharingDropdown();
   const dd = document.getElementById('nav-links-children');
   const chevron = document.getElementById('nav-links-chevron-top');
-  const wrap = document.getElementById('nav-group-links-top');
+  if(dd) dd.style.display = 'flex';
+  if(chevron) chevron.style.transform = 'rotate(90deg)';
+}
+
+function toggleSharingTopNav() {
+  const dd = document.getElementById('nav-links-children');
   const isOpen = dd.style.display === 'flex';
-  dd.style.display = isOpen ? 'none' : 'flex';
-  if(chevron) chevron.style.transform = isOpen ? '' : 'rotate(90deg)';
-  // Also trigger original toggleSharingNav for JS compat
+  if(isOpen) { closeSharingTopNav(); } else { openSharingDropdown(); }
   const grp = document.getElementById('nav-group-links');
   if(grp) { if(!isOpen) grp.classList.add('expanded'); else grp.classList.remove('expanded'); }
-  if(!isOpen) { showSection('links'); setTopActive('links'); }
 }
 
 function closeSharingTopNav() {

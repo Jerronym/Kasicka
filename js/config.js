@@ -92,7 +92,7 @@ const DEFAULT_CATS=[
   {name:'MZDA',color:'#34d399',icon:'💼'},
   {name:'OSTATNÍ',color:'#8b92a8',icon:'📦'},
 ];
-const CAT_COLORS=['#4f8ef7','#34d399','#f87171','#fbbf24','#a78bfa','#2dd4bf','#f472b6','#fb923c','#8b92a8'];
+const CAT_COLORS=['#4f8ef7','#3b82f6','#0ea5e9','#06b6d4','#2dd4bf','#34d399','#22c55e','#84cc16','#fbbf24','#f97316','#fb923c','#f87171','#ef4444','#f472b6','#ec4899','#a78bfa','#8b5cf6','#6366f1','#64748b','#8b92a8'];
 const CAT_ICONS=['🍽️','🏠','🚗','🎬','❤️','👕','💰','💼','📦','✈️','🎓','🐾','🛒','💊','🎁','🏋️','📱','🔧','🍺','☕'];
 
 let editingCat=-1, selectedCatColor=CAT_COLORS[0], selectedCatIcon=CAT_ICONS[0];

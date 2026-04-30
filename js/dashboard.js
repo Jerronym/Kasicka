@@ -1,5 +1,22 @@
 // Kasička — dashboard, graf celkových zůstatků
 
+let dashCatAccFilter='';
+
+function refreshDashCatAccFilter(){
+  const sel=document.getElementById('dash-cat-acc-filter');
+  if(!sel) return;
+  const prev=sel.value;
+  sel.innerHTML='<option value="">Všechny účty</option>'+
+    accounts.map((a,i)=>`<option value="${i}">${escHtml(a.name)}</option>`).join('');
+  if(prev!==''&&accounts[parseInt(prev)]) sel.value=prev;
+}
+
+function setDashCatAccFilter(val){
+  dashCatAccFilter=val;
+  renderCategoryChart();
+  renderIncomeCategoryChart();
+}
+
 function renderDashboard(){
   updateDashNavLabel();
   const range=getDashDateRange();
@@ -71,6 +88,7 @@ function renderDashboard(){
     }).join('');
   }
 
+  refreshDashCatAccFilter();
   renderBalanceChart();
   renderCategoryChart();
   renderIncomeCategoryChart();
@@ -93,6 +111,7 @@ function renderCategoryChart(){
   transactions.forEach(t=>{
     if(t.type!=='vydaj') return;
     if(range){const d=new Date(t.date+'T12:00:00');if(d<range.from||d>range.to) return;}
+    if(dashCatAccFilter!==''&&String(t.accIdx)!==String(dashCatAccFilter)) return;
     spend[t.cat]=(spend[t.cat]||0)+toCZK(t.amount,t.cur);
   });
   const entries=Object.entries(spend).sort((a,b)=>b[1]-a[1]);
@@ -134,6 +153,7 @@ function renderIncomeCategoryChart(){
   transactions.forEach(t=>{
     if(t.type!=='prijem') return;
     if(range){const d=new Date(t.date+'T12:00:00');if(d<range.from||d>range.to) return;}
+    if(dashCatAccFilter!==''&&String(t.accIdx)!==String(dashCatAccFilter)) return;
     earn[t.cat]=(earn[t.cat]||0)+toCZK(t.amount,t.cur);
   });
   const entries=Object.entries(earn).sort((a,b)=>b[1]-a[1]);
