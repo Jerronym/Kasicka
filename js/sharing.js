@@ -243,6 +243,7 @@ async function openSharedGroupPage(groupId){
   viewingSharedGroup=groupId;
   sgTabFilter='all';
   sgPeriodFilter='all';
+  sgPeriodOffset=0;
   sgCatFilter='vse';
   showLoading('Načítání skupiny...');
   try{await loadSharedGroupDetail();}finally{hideLoading();}
@@ -276,7 +277,7 @@ function switchSgTab(userId,ev){
 
 // ── Filtry detailu skupiny ─────────────────────────────────
 function getSgDateRange(){
-  const now=new Date();
+  const now=new Date(); now.setHours(0,0,0,0);
   if(sgPeriodFilter==='all') return null;
   if(sgPeriodFilter==='vlastni'){
     const f=document.getElementById('sg-from')?.value;
@@ -284,19 +285,57 @@ function getSgDateRange(){
     if(!f||!t) return null;
     return {from:new Date(f+'T00:00:00'),to:new Date(t+'T23:59:59')};
   }
-  const from=new Date(now);
-  if(sgPeriodFilter==='tyden'){const day=(now.getDay()||7);from.setDate(now.getDate()-day+1);from.setHours(0,0,0,0);}
-  else if(sgPeriodFilter==='mesic'){from.setDate(1);from.setHours(0,0,0,0);}
-  else if(sgPeriodFilter==='rok'){from.setMonth(0,1);from.setHours(0,0,0,0);}
-  const to=new Date(now);to.setHours(23,59,59,999);
-  return {from,to};
+  if(sgPeriodFilter==='tyden'){
+    const mon=new Date(now);
+    mon.setDate(mon.getDate()-(mon.getDay()||7)+1+sgPeriodOffset*7);
+    mon.setHours(0,0,0,0);
+    const sun=new Date(mon);sun.setDate(sun.getDate()+6);sun.setHours(23,59,59,999);
+    return {from:mon,to:sun};
+  }
+  if(sgPeriodFilter==='mesic'){
+    const f=new Date(now.getFullYear(),now.getMonth()+sgPeriodOffset,1);
+    const t=new Date(now.getFullYear(),now.getMonth()+sgPeriodOffset+1,0);t.setHours(23,59,59,999);
+    return {from:f,to:t};
+  }
+  if(sgPeriodFilter==='rok'){
+    const y=now.getFullYear()+sgPeriodOffset;
+    return {from:new Date(y,0,1),to:new Date(y,11,31,23,59,59,999)};
+  }
+  return null;
+}
+function updateSgNavLabel(){
+  const el=document.getElementById('sg-period-nav-label');
+  if(!el) return;
+  const now=new Date();
+  if(sgPeriodFilter==='tyden'){
+    const base=new Date(now);
+    base.setDate(base.getDate()-(base.getDay()||7)+1+sgPeriodOffset*7);
+    const end=new Date(base);end.setDate(end.getDate()+6);
+    el.textContent=base.toLocaleDateString('cs-CZ',{day:'2-digit',month:'short'})+' – '+end.toLocaleDateString('cs-CZ',{day:'2-digit',month:'short',year:'numeric'});
+  } else if(sgPeriodFilter==='mesic'){
+    const d=new Date(now.getFullYear(),now.getMonth()+sgPeriodOffset,1);
+    el.textContent=d.toLocaleDateString('cs-CZ',{month:'long',year:'numeric'});
+  } else if(sgPeriodFilter==='rok'){
+    el.textContent=String(now.getFullYear()+sgPeriodOffset);
+  } else {
+    el.textContent='';
+  }
+}
+function shiftSgPeriod(dir){
+  sgPeriodOffset+=dir;
+  updateSgNavLabel();
+  renderSharedGroupDetail();
 }
 function setSgPeriod(p,btn){
   sgPeriodFilter=p;
+  sgPeriodOffset=0;
   document.querySelectorAll('#sg-p-all,#sg-p-week,#sg-p-month,#sg-p-year,#sg-p-custom').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
   const wrap=document.getElementById('sg-custom-wrap');
   if(wrap) wrap.style.display=p==='vlastni'?'flex':'none';
+  const nav=document.getElementById('sg-period-nav');
+  if(nav) nav.style.display=(p==='all'||p==='vlastni')?'none':'flex';
+  updateSgNavLabel();
   renderSharedGroupDetail();
 }
 function setSgCatFilter(val){

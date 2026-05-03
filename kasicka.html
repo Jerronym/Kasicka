@@ -677,6 +677,11 @@ function renderBudget(){}
           <button class="period-btn"        id="sg-p-year"   onclick="setSgPeriod('rok',this)">Rok</button>
           <button class="period-btn"        id="sg-p-custom" onclick="setSgPeriod('vlastni',this)">Vlastní</button>
         </div>
+        <div id="sg-period-nav" style="display:none;align-items:center;gap:8px;">
+          <button class="btn-edit" onclick="shiftSgPeriod(-1)">‹</button>
+          <span id="sg-period-nav-label" style="font-size:12.5px;font-weight:600;min-width:120px;text-align:center;color:var(--text-primary)"></span>
+          <button class="btn-edit" onclick="shiftSgPeriod(1)">›</button>
+        </div>
         <select id="sg-cat-filter" onchange="setSgCatFilter(this.value)" style="font-size:12px;padding:5px 10px;border-radius:10px;border:1px solid var(--card-border);background:var(--card-bg);color:var(--text-primary);font-family:inherit;">
           <option value="vse">Všechny kategorie</option>
         </select>
