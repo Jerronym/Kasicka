@@ -1304,7 +1304,10 @@ function populateSharingDropdown() {
   dd.innerHTML = html;
 }
 
+let _sharingCloseTimer = null;
+
 function openSharingDropdown() {
+  if(_sharingCloseTimer) { clearTimeout(_sharingCloseTimer); _sharingCloseTimer = null; }
   populateSharingDropdown();
   const dd = document.getElementById('nav-links-children');
   const chevron = document.getElementById('nav-links-chevron-top');
@@ -1321,10 +1324,14 @@ function toggleSharingTopNav() {
 }
 
 function closeSharingTopNav() {
-  const dd = document.getElementById('nav-links-children');
-  const chevron = document.getElementById('nav-links-chevron-top');
-  if(dd) dd.style.display = 'none';
-  if(chevron) chevron.style.transform = '';
+  if(_sharingCloseTimer) clearTimeout(_sharingCloseTimer);
+  _sharingCloseTimer = setTimeout(() => {
+    const dd = document.getElementById('nav-links-children');
+    const chevron = document.getElementById('nav-links-chevron-top');
+    if(dd) dd.style.display = 'none';
+    if(chevron) chevron.style.transform = '';
+    _sharingCloseTimer = null;
+  }, 150);
 }
 
 // ── User dropdown ───────────────────────────────────────
