@@ -543,6 +543,10 @@ tr:hover td { background: var(--hover-bg); }
 .period-btn:hover { border-color: var(--accent); color: var(--accent); }
 .period-btn.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
 
+.seg-btn { transition: background 0.15s, color 0.15s; }
+.seg-btn:hover { background: var(--hover-bg); color: var(--text-primary); }
+.seg-btn.active { background: var(--accent-dim); color: var(--accent); }
+
 .period-custom { display: none; align-items: center; gap: 6px; flex-wrap: wrap; }
 .period-custom.visible { display: flex; }
 .period-custom input[type=date] {

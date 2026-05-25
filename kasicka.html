@@ -388,24 +388,24 @@ function renderBudget(){}
           <div id="dash-budget-preview" style="padding:16px 20px;display:flex;flex-direction:column;gap:14px;"></div>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:-6px;">
-        <span style="font-size:12px;color:var(--text-secondary);">Účet:</span>
-        <select id="dash-cat-acc-filter" onchange="setDashCatAccFilter(this.value)" class="dd-select" style="font-size:12px;padding:3px 10px;border-radius:8px;min-width:120px;"></select>
-      </div>
-      <div class="two-col">
-        <div class="chart-wrap">
-          <div class="chart-wrap-title"><span>Výdaje po kategoriích</span></div>
-          <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;justify-content:center;">
-            <div style="position:relative;width:200px;height:200px;flex-shrink:0"><canvas id="chartCategories"></canvas></div>
-            <ol id="dash-top-cats" style="margin:0;padding-left:20px;flex:1;min-width:140px;font-size:13px;line-height:2.1"></ol>
+      <div class="chart-wrap">
+        <div class="chart-wrap-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <span>Kategorie</span>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div style="display:flex;border:1px solid var(--border-subtle);border-radius:8px;overflow:hidden;">
+              <button id="dash-cat-mode-vydaj" onclick="setDashCatMode('vydaj')" class="seg-btn" style="padding:3px 10px;font-size:12px;border:none;cursor:pointer;background:transparent;color:var(--text-secondary);">Výdaje</button>
+              <button id="dash-cat-mode-prijem" onclick="setDashCatMode('prijem')" class="seg-btn" style="padding:3px 10px;font-size:12px;border:none;border-left:1px solid var(--border-subtle);cursor:pointer;background:transparent;color:var(--text-secondary);">Příjmy</button>
+              <button id="dash-cat-mode-cista" onclick="setDashCatMode('cista')" class="seg-btn" style="padding:3px 10px;font-size:12px;border:none;border-left:1px solid var(--border-subtle);cursor:pointer;background:transparent;color:var(--text-secondary);">Čistá</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;color:var(--text-secondary);">Účet:</span>
+              <select id="dash-cat-acc-filter" onchange="setDashCatAccFilter(this.value)" class="dd-select" style="font-size:12px;padding:3px 10px;border-radius:8px;min-width:110px;"></select>
+            </div>
           </div>
         </div>
-        <div class="chart-wrap">
-          <div class="chart-wrap-title"><span>Příjmy po kategoriích</span></div>
-          <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;justify-content:center;">
-            <div style="position:relative;width:200px;height:200px;flex-shrink:0"><canvas id="chartIncome"></canvas></div>
-            <ol id="dash-top-income" style="margin:0;padding-left:20px;flex:1;min-width:140px;font-size:13px;line-height:2.1"></ol>
-          </div>
+        <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;justify-content:center;">
+          <div style="position:relative;width:200px;height:200px;flex-shrink:0"><canvas id="chartCategories"></canvas></div>
+          <ol id="dash-top-cats" style="margin:0;padding-left:20px;flex:1;min-width:140px;font-size:13px;line-height:2.1"></ol>
         </div>
       </div>
       <div class="chart-wrap">

@@ -1,6 +1,7 @@
 // Kasička — dashboard, graf celkových zůstatků
 
 let dashCatAccFilter='';
+let dashCatMode=localStorage.getItem('kasicka_dash_cat_mode')||'vydaj';
 
 function refreshDashCatAccFilter(){
   const sel=document.getElementById('dash-cat-acc-filter');
@@ -14,7 +15,17 @@ function refreshDashCatAccFilter(){
 function setDashCatAccFilter(val){
   dashCatAccFilter=val;
   renderCategoryChart();
-  renderIncomeCategoryChart();
+}
+
+function setDashCatMode(mode){
+  dashCatMode=mode;
+  localStorage.setItem('kasicka_dash_cat_mode',mode);
+  // Update button styles
+  ['cista','vydaj','prijem'].forEach(m=>{
+    const btn=document.getElementById('dash-cat-mode-'+m);
+    if(btn) btn.classList.toggle('active',m===mode);
+  });
+  renderCategoryChart();
 }
 
 function renderDashboard(){
@@ -89,9 +100,13 @@ function renderDashboard(){
   }
 
   refreshDashCatAccFilter();
+  // Sync mode button state on render
+  ['cista','vydaj','prijem'].forEach(m=>{
+    const btn=document.getElementById('dash-cat-mode-'+m);
+    if(btn) btn.classList.toggle('active',m===dashCatMode);
+  });
   renderBalanceChart();
   renderCategoryChart();
-  renderIncomeCategoryChart();
   renderTrendChart();
 }
 
@@ -107,82 +122,104 @@ function renderCategoryChart(){
   if(!ctx||!listEl) return;
   if(chartCategories){chartCategories.destroy();chartCategories=null;}
   const range=getDashDateRange();
-  const spend={};
+
+  // Single pass — collect both income and expense by category
+  const expByCat={}, incByCat={};
   transactions.forEach(t=>{
-    if(t.type!=='vydaj') return;
+    if(t.type!=='vydaj'&&t.type!=='prijem') return;
     if(range){const d=new Date(t.date+'T12:00:00');if(d<range.from||d>range.to) return;}
     if(dashCatAccFilter!==''&&String(t.accIdx)!==String(dashCatAccFilter)) return;
-    spend[t.cat]=(spend[t.cat]||0)+toCZK(t.amount,t.cur);
+    const val=toCZK(t.amount,t.cur);
+    if(t.type==='vydaj') expByCat[t.cat]=(expByCat[t.cat]||0)+val;
+    else incByCat[t.cat]=(incByCat[t.cat]||0)+val;
   });
-  const entries=Object.entries(spend).sort((a,b)=>b[1]-a[1]);
-  if(!entries.length){
-    listEl.innerHTML='<li style="color:var(--text-secondary);list-style:none;padding-left:0">Žádné výdaje v tomto období</li>';
-    return;
-  }
-  const total=entries.reduce((s,e)=>s+e[1],0);
-  const top=entries.slice(0,9);
-  const rest=entries.slice(9);
-  if(rest.length){const restSum=rest.reduce((s,e)=>s+e[1],0);top.push(['Ostatní',restSum]);}
-  const getColor=cat=>{
+
+  const getCatColor=(cat,fallback)=>{
     if(cat==='Ostatní') return cssVar('--text-secondary');
     const c=categories.find(x=>x.name===cat);
-    return c?.color||cssVar('--accent');
+    return c?.color||cssVar(fallback);
   };
-  const labels=top.map(e=>e[0]);
-  const data=top.map(e=>Math.round(e[1]));
-  const colors=labels.map(getColor);
+
+  let entries, labels, data, colors, tooltipFn, emptyMsg;
+
+  if(dashCatMode==='vydaj'){
+    entries=Object.entries(expByCat).sort((a,b)=>b[1]-a[1]);
+    emptyMsg='Žádné výdaje v tomto období';
+    if(!entries.length){listEl.innerHTML=`<li style="color:var(--text-secondary);list-style:none;padding-left:0">${emptyMsg}</li>`;return;}
+    const total=entries.reduce((s,e)=>s+e[1],0);
+    const top=entries.slice(0,9);
+    if(entries.length>9){top.push(['Ostatní',entries.slice(9).reduce((s,e)=>s+e[1],0)]);}
+    labels=top.map(e=>e[0]);data=top.map(e=>Math.round(e[1]));
+    colors=labels.map(c=>getCatColor(c,'--accent'));
+    tooltipFn=v=>{const pct=((v.raw/total)*100).toFixed(1);return` ${demoNum(v.raw).toLocaleString('cs-CZ')} Kč (${pct} %)`;};
+    listEl.innerHTML=entries.slice(0,5).map(e=>{
+      const pct=((e[1]/total)*100).toFixed(1);
+      return`<li style="margin-bottom:3px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${getCatColor(e[0],'--accent')};margin-right:6px;vertical-align:middle"></span><b>${escHtml(e[0])}</b> — ${demoNum(Math.round(e[1])).toLocaleString('cs-CZ')} Kč <span style="color:var(--text-secondary)">(${pct} %)</span></li>`;
+    }).join('');
+
+  } else if(dashCatMode==='prijem'){
+    entries=Object.entries(incByCat).sort((a,b)=>b[1]-a[1]);
+    emptyMsg='Žádné příjmy v tomto období';
+    if(!entries.length){listEl.innerHTML=`<li style="color:var(--text-secondary);list-style:none;padding-left:0">${emptyMsg}</li>`;return;}
+    const total=entries.reduce((s,e)=>s+e[1],0);
+    const top=entries.slice(0,9);
+    if(entries.length>9){top.push(['Ostatní',entries.slice(9).reduce((s,e)=>s+e[1],0)]);}
+    labels=top.map(e=>e[0]);data=top.map(e=>Math.round(e[1]));
+    colors=labels.map(c=>getCatColor(c,'--green'));
+    tooltipFn=v=>{const pct=((v.raw/total)*100).toFixed(1);return` ${demoNum(v.raw).toLocaleString('cs-CZ')} Kč (${pct} %)`;};
+    listEl.innerHTML=entries.slice(0,5).map(e=>{
+      const pct=((e[1]/total)*100).toFixed(1);
+      return`<li style="margin-bottom:3px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${getCatColor(e[0],'--green')};margin-right:6px;vertical-align:middle"></span><b>${escHtml(e[0])}</b> — ${demoNum(Math.round(e[1])).toLocaleString('cs-CZ')} Kč <span style="color:var(--text-secondary)">(${pct} %)</span></li>`;
+    }).join('');
+
+  } else {
+    // Čistá hodnota: net = income - expense per category
+    const allCats=new Set([...Object.keys(expByCat),...Object.keys(incByCat)]);
+    const netEntries=[...allCats].map(cat=>{
+      const net=(incByCat[cat]||0)-(expByCat[cat]||0);
+      return[cat,net];
+    }).filter(e=>e[1]!==0);
+    if(!netEntries.length){listEl.innerHTML='<li style="color:var(--text-secondary);list-style:none;padding-left:0">Žádné transakce v tomto období</li>';return;}
+    const totalAbs=netEntries.reduce((s,e)=>s+Math.abs(e[1]),0);
+    // Positives sorted desc (largest near 12 CW), negatives sorted asc by abs (largest near 12 CCW = last drawn CW)
+    const pos=netEntries.filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1]);
+    const neg=netEntries.filter(e=>e[1]<0).sort((a,b)=>a[1]-b[1]); // asc = most negative first (furthest from 12)
+    const ordered=[...pos,...neg];
+    const top=ordered.slice(0,9);
+    if(ordered.length>9){top.push(['Ostatní',ordered.slice(9).reduce((s,e)=>s+Math.abs(e[1]),0)]);}
+    labels=top.map(e=>e[0]);
+    data=top.map(e=>Math.round(Math.abs(e[1])));
+    colors=top.map(e=>{
+      if(e[0]==='Ostatní') return cssVar('--text-secondary');
+      const baseColor=getCatColor(e[0],'--accent');
+      // Negative entries get reduced opacity to visually differentiate
+      const isNeg=ordered.find(x=>x[0]===e[0])?.[1]<0;
+      return isNeg?cssVarAlpha('--text-secondary',0.5):baseColor;
+    });
+    tooltipFn=v=>{
+      const idx=labels.indexOf(v.label);
+      const entry=ordered.find(e=>e[0]===v.label);
+      const sign=entry&&entry[1]<0?'−':'+';
+      const pct=((Math.abs(v.raw)/totalAbs)*100).toFixed(1);
+      return` ${sign} ${demoNum(Math.abs(v.raw)).toLocaleString('cs-CZ')} Kč (${pct} %)`;
+    };
+    // List: all net entries sorted by abs desc, top 5
+    const listEntries=[...netEntries].sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,5);
+    listEl.innerHTML=listEntries.map(e=>{
+      const isPos=e[1]>=0;
+      const col=isPos?getCatColor(e[0],'--green'):cssVarAlpha('--text-secondary',0.5);
+      const sign=isPos?'+':'−';
+      const signCol=isPos?'var(--green)':'var(--red)';
+      const pct=((Math.abs(e[1])/totalAbs)*100).toFixed(1);
+      return`<li style="margin-bottom:3px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${col};margin-right:6px;vertical-align:middle"></span><b>${escHtml(e[0])}</b> — <span style="color:${signCol}">${sign} ${demoNum(Math.round(Math.abs(e[1]))).toLocaleString('cs-CZ')} Kč</span> <span style="color:var(--text-secondary)">(${pct} %)</span></li>`;
+    }).join('');
+  }
+
   chartCategories=new Chart(ctx,{
     type:'doughnut',
     data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:1,borderColor:cssVarAlpha('--text-primary',0.1)}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>{const pct=((v.raw/total)*100).toFixed(1);return` ${demoNum(v.raw).toLocaleString('cs-CZ')} Kč (${pct} %)`;}}}}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:tooltipFn}}}}
   });
-  listEl.innerHTML=entries.slice(0,5).map(e=>{
-    const pct=((e[1]/total)*100).toFixed(1);
-    const col=getColor(e[0]);
-    return`<li style="margin-bottom:3px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${col};margin-right:6px;vertical-align:middle"></span><b>${escHtml(e[0])}</b> — ${demoNum(Math.round(e[1])).toLocaleString('cs-CZ')} Kč <span style="color:var(--text-secondary)">(${pct} %)</span></li>`;
-  }).join('');
-}
-
-function renderIncomeCategoryChart(){
-  const ctx=document.getElementById('chartIncome');
-  const listEl=document.getElementById('dash-top-income');
-  if(!ctx||!listEl) return;
-  if(chartIncome){chartIncome.destroy();chartIncome=null;}
-  const range=getDashDateRange();
-  const earn={};
-  transactions.forEach(t=>{
-    if(t.type!=='prijem') return;
-    if(range){const d=new Date(t.date+'T12:00:00');if(d<range.from||d>range.to) return;}
-    if(dashCatAccFilter!==''&&String(t.accIdx)!==String(dashCatAccFilter)) return;
-    earn[t.cat]=(earn[t.cat]||0)+toCZK(t.amount,t.cur);
-  });
-  const entries=Object.entries(earn).sort((a,b)=>b[1]-a[1]);
-  if(!entries.length){
-    listEl.innerHTML='<li style="color:var(--text-secondary);list-style:none;padding-left:0">Žádné příjmy v tomto období</li>';
-    return;
-  }
-  const total=entries.reduce((s,e)=>s+e[1],0);
-  const top=entries.slice(0,9);
-  const rest=entries.slice(9);
-  if(rest.length){const restSum=rest.reduce((s,e)=>s+e[1],0);top.push(['Ostatní',restSum]);}
-  const getColor=cat=>{
-    if(cat==='Ostatní') return cssVar('--text-secondary');
-    const c=categories.find(x=>x.name===cat);
-    return c?.color||cssVar('--green');
-  };
-  const labels=top.map(e=>e[0]);
-  const data=top.map(e=>Math.round(e[1]));
-  const colors=labels.map(getColor);
-  chartIncome=new Chart(ctx,{
-    type:'doughnut',
-    data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:1,borderColor:cssVarAlpha('--text-primary',0.1)}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>{const pct=((v.raw/total)*100).toFixed(1);return` ${demoNum(v.raw).toLocaleString('cs-CZ')} Kč (${pct} %)`;}}}}}
-  });
-  listEl.innerHTML=entries.slice(0,5).map(e=>{
-    const pct=((e[1]/total)*100).toFixed(1);
-    const col=getColor(e[0]);
-    return`<li style="margin-bottom:3px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${col};margin-right:6px;vertical-align:middle"></span><b>${escHtml(e[0])}</b> — ${demoNum(Math.round(e[1])).toLocaleString('cs-CZ')} Kč <span style="color:var(--text-secondary)">(${pct} %)</span></li>`;
-  }).join('');
 }
 
 function renderTrendChart(){
