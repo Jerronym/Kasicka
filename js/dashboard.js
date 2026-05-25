@@ -181,9 +181,11 @@ function renderCategoryChart(){
     }).filter(e=>e[1]!==0);
     if(!netEntries.length){listEl.innerHTML='<li style="color:var(--text-secondary);list-style:none;padding-left:0">Žádné transakce v tomto období</li>';return;}
     const totalAbs=netEntries.reduce((s,e)=>s+Math.abs(e[1]),0);
-    // Positives sorted desc (largest near 12 CW), negatives sorted asc by abs (largest near 12 CCW = last drawn CW)
+    // Positives sorted desc (largest near 12 CW).
+    // Negatives sorted desc by value = least negative first, most negative last →
+    // most negative ends up closest to 12 on the CCW side (from 12 to 11).
     const pos=netEntries.filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1]);
-    const neg=netEntries.filter(e=>e[1]<0).sort((a,b)=>a[1]-b[1]); // asc = most negative first (furthest from 12)
+    const neg=netEntries.filter(e=>e[1]<0).sort((a,b)=>b[1]-a[1]);
     const ordered=[...pos,...neg];
     const top=ordered.slice(0,9);
     if(ordered.length>9){top.push(['Ostatní',ordered.slice(9).reduce((s,e)=>s+Math.abs(e[1]),0)]);}
@@ -191,13 +193,9 @@ function renderCategoryChart(){
     data=top.map(e=>Math.round(Math.abs(e[1])));
     colors=top.map(e=>{
       if(e[0]==='Ostatní') return cssVar('--text-secondary');
-      const baseColor=getCatColor(e[0],'--accent');
-      // Negative entries get reduced opacity to visually differentiate
-      const isNeg=ordered.find(x=>x[0]===e[0])?.[1]<0;
-      return isNeg?cssVarAlpha('--text-secondary',0.5):baseColor;
+      return getCatColor(e[0],'--accent');
     });
     tooltipFn=v=>{
-      const idx=labels.indexOf(v.label);
       const entry=ordered.find(e=>e[0]===v.label);
       const sign=entry&&entry[1]<0?'−':'+';
       const pct=((Math.abs(v.raw)/totalAbs)*100).toFixed(1);
@@ -207,7 +205,7 @@ function renderCategoryChart(){
     const listEntries=[...netEntries].sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,5);
     listEl.innerHTML=listEntries.map(e=>{
       const isPos=e[1]>=0;
-      const col=isPos?getCatColor(e[0],'--green'):cssVarAlpha('--text-secondary',0.5);
+      const col=getCatColor(e[0],isPos?'--green':'--accent');
       const sign=isPos?'+':'−';
       const signCol=isPos?'var(--green)':'var(--red)';
       const pct=((Math.abs(e[1])/totalAbs)*100).toFixed(1);
