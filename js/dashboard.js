@@ -184,17 +184,14 @@ function renderCategoryChart(){
     // Positives sorted desc (largest near 12 CW).
     // Negatives sorted desc by value = least negative first, most negative last →
     // most negative ends up closest to 12 on the CCW side (from 12 to 11).
+    // No slice/Ostatní grouping — mixing absolute values of negatives into a positive
+    // "Ostatní" bucket would create a misleading large positive slice.
     const pos=netEntries.filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1]);
     const neg=netEntries.filter(e=>e[1]<0).sort((a,b)=>b[1]-a[1]);
     const ordered=[...pos,...neg];
-    const top=ordered.slice(0,9);
-    if(ordered.length>9){top.push(['Ostatní',ordered.slice(9).reduce((s,e)=>s+Math.abs(e[1]),0)]);}
-    labels=top.map(e=>e[0]);
-    data=top.map(e=>Math.round(Math.abs(e[1])));
-    colors=top.map(e=>{
-      if(e[0]==='Ostatní') return cssVar('--text-secondary');
-      return getCatColor(e[0],'--accent');
-    });
+    labels=ordered.map(e=>e[0]);
+    data=ordered.map(e=>Math.round(Math.abs(e[1])));
+    colors=ordered.map(e=>getCatColor(e[0],'--accent'));
     tooltipFn=v=>{
       const entry=ordered.find(e=>e[0]===v.label);
       const sign=entry&&entry[1]<0?'−':'+';
