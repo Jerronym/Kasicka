@@ -58,8 +58,8 @@ function renderDashboard(){
   document.getElementById('dash-total').textContent=fmt(accTotal+invTotal);
   document.getElementById('dash-income').textContent=fmt(income);
   document.getElementById('dash-expense').textContent=fmt(expense);
-  document.getElementById('dash-net').textContent=(net>=0?'+':'')+fmt(net);
-  document.getElementById('dash-net').style.color=net>=0?'var(--green)':'var(--red)';
+  document.getElementById('dash-net').textContent=(privacyMode||net<0?'':'+')+(privacyMode?fmt(Math.abs(net)):fmt(net));
+  document.getElementById('dash-net').style.color=privacyMode?'var(--text-secondary)':net>=0?'var(--green)':'var(--red)';
 
   // Recent transactions filtered by period (newest first, max 8)
   const recentEl=document.getElementById('dash-recent-txn');
