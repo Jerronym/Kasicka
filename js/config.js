@@ -3,6 +3,7 @@
 let transactions=[],accounts=[],investments=[],budgets=[],categories=[],invGroups=[];
 let goals=[],wishlist=[];
 let demoMode=false;
+let privacyMode=false;
 let _realDataBackup=null;
 let txnFilter='vse';
 let activeTagFilter=null;
@@ -42,6 +43,7 @@ async function fetchLiveRates(){
 }
 function demoNum(n){ return n; }
 const fmt=(n,cur='CZK')=>{
+  if(privacyMode){const sym=cur==='EUR'?'€':cur==='USD'?'$':'Kč';return'••••• '+sym;}
   if(cur==='EUR') return n.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
   if(cur==='USD') return n.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' $';
   return n.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' Kč';

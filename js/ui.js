@@ -18,6 +18,25 @@ function loadTheme(){
   setTheme(saved||'');
 }
 
+// ── Privacy mode (skrýt zůstatky) ──────────────────────
+function applyPrivacyMode(){
+  const on=document.getElementById('privacy-icon-on');
+  const off=document.getElementById('privacy-icon-off');
+  if(on)  on.style.display =privacyMode?'none':'';
+  if(off) off.style.display=privacyMode?'':'none';
+}
+function togglePrivacyMode(){
+  privacyMode=!privacyMode;
+  localStorage.setItem('kasicka_privacy',privacyMode?'1':'');
+  applyPrivacyMode();
+  markDirty('dashboard','transactions','accounts','investments','budget');
+  if(typeof renderAccChart==='function')   renderAccChart();
+  if(typeof renderInvChart==='function')   renderInvChart();
+  if(typeof renderBalanceChart==='function') renderBalanceChart();
+  if(typeof renderTrendChart==='function') renderTrendChart();
+  if(typeof renderCategoryChart==='function') renderCategoryChart();
+}
+
 // ── Toast notifikace ──────────────────────────────────
 // Typy: 'error' (červená), 'success' (zelená), 'warn' (žlutá), 'info' (modrá)
 const _TOAST_ICONS={error:'✕',success:'✓',warn:'⚠',info:'ℹ'};

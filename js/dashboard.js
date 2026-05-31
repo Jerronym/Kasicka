@@ -151,10 +151,10 @@ function renderCategoryChart(){
     if(entries.length>9){top.push(['Ostatní',entries.slice(9).reduce((s,e)=>s+e[1],0)]);}
     labels=top.map(e=>e[0]);data=top.map(e=>Math.round(e[1]));
     colors=labels.map(c=>getCatColor(c,'--accent'));
-    tooltipFn=v=>{const pct=((v.raw/total)*100).toFixed(1);return` ${demoNum(v.raw).toLocaleString('cs-CZ')} Kč (${pct} %)`;};
+    tooltipFn=v=>{const pct=((v.raw/total)*100).toFixed(1);return` ${fmt(demoNum(v.raw))} (${pct} %)`;};
     listEl.innerHTML=entries.slice(0,5).map(e=>{
       const pct=((e[1]/total)*100).toFixed(1);
-      return`<li style="margin-bottom:3px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${getCatColor(e[0],'--accent')};margin-right:6px;vertical-align:middle"></span><b>${escHtml(e[0])}</b> — ${demoNum(Math.round(e[1])).toLocaleString('cs-CZ')} Kč <span style="color:var(--text-secondary)">(${pct} %)</span></li>`;
+      return`<li style="margin-bottom:3px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${getCatColor(e[0],'--accent')};margin-right:6px;vertical-align:middle"></span><b>${escHtml(e[0])}</b> — ${fmt(demoNum(Math.round(e[1])))} <span style="color:var(--text-secondary)">(${pct} %)</span></li>`;
     }).join('');
 
   } else if(dashCatMode==='prijem'){
@@ -166,10 +166,10 @@ function renderCategoryChart(){
     if(entries.length>9){top.push(['Ostatní',entries.slice(9).reduce((s,e)=>s+e[1],0)]);}
     labels=top.map(e=>e[0]);data=top.map(e=>Math.round(e[1]));
     colors=labels.map(c=>getCatColor(c,'--green'));
-    tooltipFn=v=>{const pct=((v.raw/total)*100).toFixed(1);return` ${demoNum(v.raw).toLocaleString('cs-CZ')} Kč (${pct} %)`;};
+    tooltipFn=v=>{const pct=((v.raw/total)*100).toFixed(1);return` ${fmt(demoNum(v.raw))} (${pct} %)`;};
     listEl.innerHTML=entries.slice(0,5).map(e=>{
       const pct=((e[1]/total)*100).toFixed(1);
-      return`<li style="margin-bottom:3px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${getCatColor(e[0],'--green')};margin-right:6px;vertical-align:middle"></span><b>${escHtml(e[0])}</b> — ${demoNum(Math.round(e[1])).toLocaleString('cs-CZ')} Kč <span style="color:var(--text-secondary)">(${pct} %)</span></li>`;
+      return`<li style="margin-bottom:3px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${getCatColor(e[0],'--green')};margin-right:6px;vertical-align:middle"></span><b>${escHtml(e[0])}</b> — ${fmt(demoNum(Math.round(e[1])))} <span style="color:var(--text-secondary)">(${pct} %)</span></li>`;
     }).join('');
 
   } else {
@@ -196,7 +196,7 @@ function renderCategoryChart(){
       const entry=ordered.find(e=>e[0]===v.label);
       const sign=entry&&entry[1]<0?'−':'+';
       const pct=((Math.abs(v.raw)/totalAbs)*100).toFixed(1);
-      return` ${sign} ${demoNum(Math.abs(v.raw)).toLocaleString('cs-CZ')} Kč (${pct} %)`;
+      return` ${sign} ${fmt(demoNum(Math.abs(v.raw)))} (${pct} %)`;
     };
     // List: all net entries sorted by abs desc, top 5
     const listEntries=[...netEntries].sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,5);
@@ -206,7 +206,7 @@ function renderCategoryChart(){
       const sign=isPos?'+':'−';
       const signCol=isPos?'var(--green)':'var(--red)';
       const pct=((Math.abs(e[1])/totalAbs)*100).toFixed(1);
-      return`<li style="margin-bottom:3px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${col};margin-right:6px;vertical-align:middle"></span><b>${escHtml(e[0])}</b> — <span style="color:${signCol}">${sign} ${demoNum(Math.round(Math.abs(e[1]))).toLocaleString('cs-CZ')} Kč</span> <span style="color:var(--text-secondary)">(${pct} %)</span></li>`;
+      return`<li style="margin-bottom:3px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${col};margin-right:6px;vertical-align:middle"></span><b>${escHtml(e[0])}</b> — <span style="color:${signCol}">${sign} ${fmt(demoNum(Math.round(Math.abs(e[1]))))}</span> <span style="color:var(--text-secondary)">(${pct} %)</span></li>`;
     }).join('');
   }
 
@@ -244,7 +244,7 @@ function renderTrendChart(){
       {label:'Příjmy',data:incomeData,backgroundColor:cssVarAlpha('--green',0.7),borderColor:cssVar('--green'),borderWidth:1},
       {label:'Výdaje',data:expenseData,backgroundColor:cssVarAlpha('--red',0.7),borderColor:cssVar('--red'),borderWidth:1}
     ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:cssVar('--text-secondary'),font:{size:11}}},tooltip:{callbacks:{label:v=>` ${demoNum(v.raw).toLocaleString('cs-CZ')} Kč`}}},scales:{x:{ticks:{color:cssVar('--text-secondary'),font:{size:10}},grid:{color:cssVar('--border-subtle')}},y:{ticks:{color:cssVar('--text-secondary'),font:{size:10},callback:v=>demoNum(v).toLocaleString('cs-CZ')},grid:{color:cssVar('--border-subtle')}}}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:cssVar('--text-secondary'),font:{size:11}}},tooltip:{callbacks:{label:v=>` ${fmt(demoNum(v.raw))}`}}},scales:{x:{ticks:{color:cssVar('--text-secondary'),font:{size:10}},grid:{color:cssVar('--border-subtle')}},y:{ticks:{color:cssVar('--text-secondary'),font:{size:10},callback:v=>privacyMode?'•••':demoNum(v).toLocaleString('cs-CZ')},grid:{color:cssVar('--border-subtle')}}}}
   });
 }
 
@@ -268,5 +268,5 @@ function renderBalanceChart(){
     const filtered=history.filter(h=>{const d=new Date((h.date||'2000-01-01')+'T12:00:00');return d>=range.from&&d<=range.to;});
     if(filtered.length>=1) history=filtered;
   }
-  chartBalance=new Chart(ctx,{type:'line',data:{labels:history.map(h=>h.label),datasets:[{label:'Majetek (Kč)',data:history.map(h=>h.value),borderColor:cssVar('--accent'),backgroundColor:cssVarAlpha('--accent',0.08),borderWidth:2,pointRadius:0,pointHoverRadius:4,pointBackgroundColor:cssVar('--accent'),fill:true,tension:0.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>demoNum(v.raw).toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' Kč'}}},scales:{x:{ticks:{color:cssVar('--text-secondary'),font:{size:11},maxRotation:45,autoSkip:true},grid:{color:cssVar('--border-subtle')}},y:{ticks:{color:cssVar('--text-secondary'),font:{size:11},callback:v=>demoNum(v).toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})},grid:{color:cssVar('--border-subtle')}}}}});
+  chartBalance=new Chart(ctx,{type:'line',data:{labels:history.map(h=>h.label),datasets:[{label:'Majetek (Kč)',data:history.map(h=>h.value),borderColor:cssVar('--accent'),backgroundColor:cssVarAlpha('--accent',0.08),borderWidth:2,pointRadius:0,pointHoverRadius:4,pointBackgroundColor:cssVar('--accent'),fill:true,tension:0.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>fmt(demoNum(v.raw))}}},scales:{x:{ticks:{color:cssVar('--text-secondary'),font:{size:11},maxRotation:45,autoSkip:true},grid:{color:cssVar('--border-subtle')}},y:{ticks:{color:cssVar('--text-secondary'),font:{size:11},callback:v=>privacyMode?'•••':demoNum(v).toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})},grid:{color:cssVar('--border-subtle')}}}}});
 }

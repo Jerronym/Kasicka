@@ -124,6 +124,8 @@ function showApp(user){
   if(userInfoEl) userInfoEl.style.display='flex';
   if(typeof updateMobileUserInfo==='function') updateMobileUserInfo();
   demoMode=localStorage.getItem('kasicka_demo')==='1';
+  privacyMode=localStorage.getItem('kasicka_privacy')==='1';
+  if(typeof applyPrivacyMode==='function') applyPrivacyMode();
   const cb1=document.getElementById('demo-toggle');
   const cb2=document.getElementById('mobile-demo-toggle');
   if(cb1) cb1.checked=demoMode;

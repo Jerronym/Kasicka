@@ -241,7 +241,7 @@ function renderBudget(){
               <span style="font-size:11px;color:var(--text-secondary);margin-left:8px">${periodLabel(b)}</span>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:12.5px;color:${over?'var(--red)':'var(--text-secondary)'}">${demoNum(spent).toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})} / ${demoNum(b.limit).toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})} Kč</span>
+              <span style="font-size:12.5px;color:${over?'var(--red)':'var(--text-secondary)'}">${fmt(demoNum(spent))} / ${fmt(demoNum(b.limit))}</span>
               <button class="btn-edit" onclick="event.stopPropagation();openBudModal(${i})">Upravit</button>
             </div>
           </div>
@@ -270,7 +270,7 @@ function renderBudget(){
             </div>
             <div style="display:flex;align-items:center;gap:8px">
               <span style="font-size:15px;font-weight:600;color:${b.color}">${fmt(spent)}</span>
-              ${b.limit?`<span style="font-size:12px;color:${over?'var(--red)':'var(--text-secondary)'}">z ${demoNum(b.limit).toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})} Kč</span>`:''}
+              ${b.limit?`<span style="font-size:12px;color:${over?'var(--red)':'var(--text-secondary)'}">z ${fmt(demoNum(b.limit))}</span>`:''}
               <button class="btn-edit" onclick="event.stopPropagation();openBudModal(${i})">Upravit</button>
             </div>
           </div>
