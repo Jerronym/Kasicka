@@ -1050,7 +1050,8 @@ tr:hover td { background: var(--hover-bg); }
   .main { padding: calc(var(--topnav-h) + 14px) 14px 120px; }
   .two-col { grid-template-columns: 1fr; }
   .cards-row { grid-template-columns: 1fr 1fr; }
-  .page-title { font-size: 19px; }
+  .page-title { display: none; }
+  .page-sub { display: none; }
 
   /* Bottom navigation — 4 tabs + center FAB */
   .bottom-nav {
@@ -1201,7 +1202,6 @@ tr:hover td { background: var(--hover-bg); }
   .mobile-menu-user { display: flex; align-items: center; gap: 10px; padding: 10px 8px; font-size: 13px; color: var(--text-secondary); }
 
   /* Layout */
-  .page-title { font-size: 19px; }
   .txn-desktop { display: none; }
   .txn-mobile { display: flex; flex-direction: column; gap: 10px; padding: 0; }
 
