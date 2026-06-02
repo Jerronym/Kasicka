@@ -6,10 +6,10 @@ function setTheme(id){
   if(id) document.documentElement.dataset.theme=id;
   else delete document.documentElement.dataset.theme;
   localStorage.setItem(THEME_LS_KEY,id||'');
-  const s=document.getElementById('theme-select');
-  const m=document.getElementById('mobile-theme-select');
-  if(s) s.value=id||'';
-  if(m) m.value=id||'';
+  ['theme-select','mobile-theme-select','mobile-menu-theme-select'].forEach(sid=>{
+    const el=document.getElementById(sid);
+    if(el) el.value=id||'';
+  });
   markDirty('dashboard','transactions','accounts','investments','budget');
 }
 function loadTheme(){
@@ -24,6 +24,11 @@ function applyPrivacyMode(){
   const off=document.getElementById('privacy-icon-off');
   if(on)  on.style.display =privacyMode?'none':'';
   if(off) off.style.display=privacyMode?'':'none';
+  // Mobile topbar eye icons
+  const mon=document.getElementById('mobile-privacy-icon-on');
+  const moff=document.getElementById('mobile-privacy-icon-off');
+  if(mon)  mon.style.display =privacyMode?'none':'';
+  if(moff) moff.style.display=privacyMode?'':'none';
 }
 function togglePrivacyMode(){
   privacyMode=!privacyMode;
@@ -122,6 +127,14 @@ function toggleMobileMenu(){
 }
 function closeMobileMenu(){
   document.getElementById('mobile-menu').classList.remove('open');
+}
+
+// ── FAB add-sheet ──────────────────────────────────────
+function openMobileAddSheet(){
+  document.getElementById('mobile-add-sheet').classList.add('open');
+}
+function closeMobileAddSheet(){
+  document.getElementById('mobile-add-sheet').classList.remove('open');
 }
 function updateMobileUserInfo(){
   const el=document.getElementById('mobile-user-info');

@@ -660,6 +660,7 @@ function renderTxns(){
 
   const summaryEl=document.getElementById('period-summary');
   const summaryInner=document.getElementById('period-summary-inner');
+  const txnBilance=document.getElementById('txn-bilance-mobile-value');
   if(activePeriod!=='vse'){
     const inc=list.filter(t=>t.type==='prijem').reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
     const exp=list.filter(t=>t.type==='vydaj').reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
@@ -669,8 +670,17 @@ function renderTxns(){
       <div style="text-align:center"><div style="font-size:11px;color:var(--text-secondary);margin-bottom:3px">VÝDAJE</div><div style="font-size:16px;font-weight:600;color:var(--red)">${fmt(exp)}</div></div>
       <div style="text-align:center"><div style="font-size:11px;color:var(--text-secondary);margin-bottom:3px">BILANCE</div><div style="font-size:16px;font-weight:600;color:${net>=0?'var(--green)':'var(--red)'}">${net>=0?'+':''}${fmt(net)}</div></div>`;
     summaryEl.style.display='block';
+    // Mobile Bilance hero card
+    if(txnBilance){
+      txnBilance.textContent=(privacyMode||net<0?'':'+')+(privacyMode?fmt(Math.abs(net)):fmt(net));
+      txnBilance.style.color=privacyMode?'var(--text-secondary)':net>=0?'var(--green)':'var(--red)';
+    }
   } else {
     summaryEl.style.display='none';
+    if(txnBilance){
+      txnBilance.textContent='0 Kč';
+      txnBilance.style.color='var(--text-secondary)';
+    }
   }
 
   if(!list.length){
