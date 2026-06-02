@@ -1053,6 +1053,13 @@ tr:hover td { background: var(--hover-bg); }
   .page-title { display: none; }
   .page-sub { display: none; }
 
+  /* Section header action buttons — center + slightly bigger on mobile */
+  .section > div:first-child { justify-content: center !important; }
+  .section > div:first-child .btn,
+  .section > div:first-child .btn-outline { font-size: 14px; padding: 9px 20px; }
+  /* Transakce buttons hidden — FAB handles them */
+  #section-transactions > div:first-child > div:last-child { display: none !important; }
+
   /* Bottom navigation — 4 tabs + center FAB */
   .bottom-nav {
     display: flex !important;
@@ -1063,7 +1070,7 @@ tr:hover td { background: var(--hover-bg); }
     border-top: 1px solid var(--card-border);
     padding: 0 4px;
     padding-bottom: max(8px, env(safe-area-inset-bottom));
-    z-index: 90;
+    z-index: 100;
     justify-content: stretch;
     align-items: flex-start;
   }
@@ -1188,6 +1195,8 @@ tr:hover td { background: var(--hover-bg); }
     padding-bottom: max(24px, env(safe-area-inset-bottom));
     width: 100%; max-width: 480px;
     border: 1px solid var(--card-border); border-bottom: none;
+    max-height: calc(100svh - 70px);
+    overflow-y: auto;
   }
   .mobile-menu-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; padding-left: 4px; }
   .mobile-menu-item {
