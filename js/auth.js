@@ -82,8 +82,8 @@ async function loadFromCloud(){
   markDirty();
   // Aktualizovat směnné kurzy z ČNB
   fetchLiveRates();
-  // Načti sdílená data (profil, přátelé, skupiny) z Supabase
-  await loadSharedData();
+  // Načti sdílená data na pozadí — neblokuje loader
+  loadSharedData();
 }
 
 let _lastCloudSave=null; // timestamp posledního uložení do cloudu

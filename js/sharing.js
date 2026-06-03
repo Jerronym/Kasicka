@@ -3,9 +3,7 @@
 // ── Načtení sdílených dat ──────────────────────────────────
 async function loadSharedData(){
   if(!currentUser) return;
-  await loadMyProfile();
-  await loadFriends();
-  await loadSharedGroups();
+  await Promise.all([loadMyProfile(), loadFriends(), loadSharedGroups()]);
   renderSidebarGroups();
 }
 
