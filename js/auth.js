@@ -115,6 +115,8 @@ async function saveToCloud(){
 }
 
 function showApp(user){
+  // Re-entrancy guard: token refresh fires onAuthStateChange again — skip full reload
+  const alreadyLoaded=currentUser&&currentUser.id===user.id;
   currentUser=user;
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('main-app').style.display='flex';
@@ -130,8 +132,11 @@ function showApp(user){
   const cb2=document.getElementById('mobile-demo-toggle');
   if(cb1) cb1.checked=demoMode;
   if(cb2) cb2.checked=demoMode;
+  if(alreadyLoaded) return; // token refresh — nezačínat znovu načítání
   showLoading('Načítání dat...');
-  loadFromCloud().finally(hideLoading);
+  // Safety net: loader se skryje nejpozději za 15 s i při selhání síťového volání
+  const _loadTimeout=setTimeout(hideLoading,15000);
+  loadFromCloud().finally(()=>{clearTimeout(_loadTimeout);hideLoading();});
 }
 
 function hideApp(){
@@ -172,11 +177,13 @@ saveToStorage=function(){
 };
 
 // Spustit auth listener
+// POZOR: nevolat supa.from() přímo v callbacku — supabase-js v2 drží auth lock
+// během callbacku a vnořené volání by deadlockovalo. setTimeout(0) lock uvolní.
 supa.auth.onAuthStateChange((event, session)=>{
   if(session?.user){
-    showApp(session.user);
+    setTimeout(()=>showApp(session.user),0);
   } else {
-    hideApp();
+    setTimeout(hideApp,0);
   }
 });
 
