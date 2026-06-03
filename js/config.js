@@ -148,7 +148,15 @@ let eurCzkRate=25; // fallback
 // ── Supabase ───────────────────────────────────────────────
 const SUPA_URL='https://bjjpaympgilbkzmhmdcy.supabase.co';
 const SUPA_KEY='sb_publishable_yJSg_MYaAnCOcryppSYP1A_UAkXxQOX';
-const supa=supabase.createClient(SUPA_URL, SUPA_KEY);
+const supa=supabase.createClient(SUPA_URL, SUPA_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    // Mobilní/PWA prohlížeče zmrazují kontexty a drží navigator.locks zámek
+    // donekonečna → dotazy pak visí. No-op zámek to obchází (single-user app).
+    lock: async (_name, _acquireTimeout, fn) => await fn(),
+  },
+});
 
 let currentUser=null;
 let authMode='login';

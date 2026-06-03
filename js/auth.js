@@ -55,7 +55,13 @@ async function authSignOut(){
 async function loadFromCloud(){
   if(!currentUser) return;
   const {data,error}=await supa.from('user_data').select('data,updated_at').eq('user_id',currentUser.id).single();
-  if(error&&error.code!=='PGRST116') return; // PGRST116 = no rows
+  if(error&&error.code!=='PGRST116'){
+    console.error('loadFromCloud selhalo:',error);
+    if(typeof toast==='function') toast('Nepodařilo se načíst data z cloudu: '+(error.message||error.code),'err');
+    if(typeof loadFromStorage==='function') loadFromStorage();
+    markDirty();
+    return;
+  }
   if(data?.data){
     applyImport(data.data);
     _lastCloudSave=data.updated_at||null;
