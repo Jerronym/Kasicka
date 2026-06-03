@@ -2,6 +2,10 @@
 
 // ── Theme přepínač ──────────────────────────────────
 const THEME_LS_KEY='kasicka_theme';
+const THEME_COLORS={
+  '':'#1a1a2e', light:'#f5f5f7', ocean:'#0a1628',
+  forest:'#0a1f0a', sunset:'#1a0a1a', cyberpunk:'#0d0d0d', warm:'#ece0d1'
+};
 function setTheme(id){
   if(id) document.documentElement.dataset.theme=id;
   else delete document.documentElement.dataset.theme;
@@ -10,6 +14,8 @@ function setTheme(id){
     const el=document.getElementById(sid);
     if(el) el.value=id||'';
   });
+  const tc=document.querySelector('meta[name="theme-color"]');
+  if(tc) tc.content=THEME_COLORS[id||'']||'#1a1a2e';
   markDirty('dashboard','transactions','accounts','investments','budget');
 }
 function loadTheme(){
