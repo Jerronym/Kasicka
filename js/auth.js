@@ -1,4 +1,6 @@
 // Kasička — autentizace a inicializace
+// Flag: jsme v recovery toku (reset hesla z emailu) — blokuje showApp()
+let recoveryMode = window.location.hash.includes('type=recovery');
 function switchAuthTab(mode){
   authMode=mode;
   document.getElementById('tab-login').classList.toggle('active', mode==='login');
@@ -50,6 +52,9 @@ async function authResetPassword(){
 }
 
 function showRecoveryUI(){
+  recoveryMode=true;
+  // Vyčisti recovery hash z URL, aby reload znovu netriggeroval recovery
+  history.replaceState(null,'',window.location.pathname);
   // Zobraz auth-screen, skryj hlavní app
   document.getElementById('auth-screen').style.display='flex';
   document.getElementById('main-app').style.display='none';
@@ -75,6 +80,7 @@ async function authUpdatePassword(){
     return;
   }
   showAuthSuccess('Heslo bylo změněno. Přihlas se.');
+  recoveryMode=false;
   await supa.auth.signOut();
   // Návrat na login
   document.getElementById('auth-recovery').style.display='none';
@@ -226,16 +232,22 @@ supa.auth.onAuthStateChange((event, session)=>{
     setTimeout(showRecoveryUI,0);
     return;
   }
-  if(session?.user){
+  if(session?.user && !recoveryMode){
     setTimeout(()=>showApp(session.user),0);
-  } else {
+  } else if(!session?.user && !recoveryMode){
     setTimeout(hideApp,0);
   }
+  // recoveryMode=true: ignoruj SIGNED_IN/INITIAL_SESSION — formulář pro nové heslo zůstane
 });
 
 // Zkusit obnovit session
 supa.auth.getSession().then(({data:{session}})=>{
-  if(!session) hideApp(); // Zobraz přihlašovací obrazovku
+  if(recoveryMode){
+    // URL hash obsahuje recovery token — zobraz formulář ihned (pojistka)
+    setTimeout(showRecoveryUI,0);
+  } else if(!session){
+    hideApp(); // Zobraz přihlašovací obrazovku
+  }
 });
 
 // ── Init ──────────────────────────────────────────────────
