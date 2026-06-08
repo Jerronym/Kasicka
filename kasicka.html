@@ -140,18 +140,28 @@ function renderBudget(){}
     <div class="auth-logo">🐷</div>
     <div class="auth-title">Kasička</div>
     <div class="auth-sub">Tvůj osobní finanční deník</div>
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Přihlásit se</button>
-      <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Registrovat</button>
-    </div>
     <div class="auth-error" id="auth-error"></div>
     <div class="auth-success" id="auth-success"></div>
-    <div class="form-group"><label>Email</label><input type="email" id="auth-email" placeholder="vas@email.cz" autocomplete="email"></div>
-    <div class="form-group"><label>Heslo</label><input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')authSubmit()"></div>
-    <div id="auth-pass2-wrap" class="form-group" style="display:none;"><label>Heslo znovu</label><input type="password" id="auth-password2" placeholder="••••••••" autocomplete="new-password"></div>
-    <button class="btn" onclick="authSubmit()" id="auth-btn" style="width:100%;margin-top:8px;padding:13px;font-size:15px;">Přihlásit se</button>
-    <div id="auth-forgot" style="text-align:center;margin-top:14px;">
-      <button onclick="authResetPassword()" style="background:none;border:none;color:var(--text-secondary);font-size:12.5px;cursor:pointer;font-family:inherit;">Zapomenuté heslo?</button>
+    <!-- Login / Register UI -->
+    <div id="auth-login-ui">
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Přihlásit se</button>
+        <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Registrovat</button>
+      </div>
+      <div class="form-group"><label>Email</label><input type="email" id="auth-email" placeholder="vas@email.cz" autocomplete="email"></div>
+      <div class="form-group"><label>Heslo</label><input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')authSubmit()"></div>
+      <div id="auth-pass2-wrap" class="form-group" style="display:none;"><label>Heslo znovu</label><input type="password" id="auth-password2" placeholder="••••••••" autocomplete="new-password"></div>
+      <button class="btn" onclick="authSubmit()" id="auth-btn" style="width:100%;margin-top:8px;padding:13px;font-size:15px;">Přihlásit se</button>
+      <div id="auth-forgot" style="text-align:center;margin-top:14px;">
+        <button onclick="authResetPassword()" style="background:none;border:none;color:var(--text-secondary);font-size:12.5px;cursor:pointer;font-family:inherit;">Zapomenuté heslo?</button>
+      </div>
+    </div>
+    <!-- Recovery UI (zobrazí se po kliknutí na reset link v emailu) -->
+    <div id="auth-recovery" style="display:none;">
+      <p style="text-align:center;color:var(--text-secondary);font-size:13px;margin-bottom:16px;">Nastav si nové heslo</p>
+      <div class="form-group"><label>Nové heslo</label><input type="password" id="auth-new-pass" placeholder="••••••••" autocomplete="new-password"></div>
+      <div class="form-group"><label>Nové heslo znovu</label><input type="password" id="auth-new-pass2" placeholder="••••••••" autocomplete="new-password"></div>
+      <button class="btn" onclick="authUpdatePassword()" id="auth-update-btn" style="width:100%;margin-top:8px;padding:13px;font-size:15px;">Nastavit nové heslo</button>
     </div>
   </div>
 </div>

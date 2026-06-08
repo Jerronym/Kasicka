@@ -44,8 +44,43 @@ async function authSubmit(){
 async function authResetPassword(){
   const email=document.getElementById('auth-email').value.trim();
   if(!email){showAuthError('Zadej nejdřív email.');return;}
-  await supa.auth.resetPasswordForEmail(email,{redirectTo:window.location.href});
+  const redirectTo=window.location.origin+window.location.pathname;
+  await supa.auth.resetPasswordForEmail(email,{redirectTo});
   showAuthSuccess('Email pro reset hesla byl odeslán.');
+}
+
+function showRecoveryUI(){
+  // Zobraz auth-screen, skryj hlavní app
+  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('main-app').style.display='none';
+  // Přepni auth-box do recovery režimu
+  document.getElementById('auth-login-ui').style.display='none';
+  document.getElementById('auth-recovery').style.display='block';
+  document.getElementById('auth-error').style.display='none';
+  document.getElementById('auth-success').style.display='none';
+}
+
+async function authUpdatePassword(){
+  const pass=document.getElementById('auth-new-pass').value;
+  const pass2=document.getElementById('auth-new-pass2').value;
+  if(!pass||!pass2){showAuthError('Vyplň obě pole.');return;}
+  if(pass!==pass2){showAuthError('Hesla se neshodují.');return;}
+  if(pass.length<6){showAuthError('Heslo musí mít alespoň 6 znaků.');return;}
+  const btn=document.getElementById('auth-update-btn');
+  btn.disabled=true; btn.textContent='Ukládám...';
+  const {error}=await supa.auth.updateUser({password:pass});
+  if(error){
+    showAuthError(error.message);
+    btn.disabled=false; btn.textContent='Nastavit nové heslo';
+    return;
+  }
+  showAuthSuccess('Heslo bylo změněno. Přihlas se.');
+  await supa.auth.signOut();
+  // Návrat na login
+  document.getElementById('auth-recovery').style.display='none';
+  document.getElementById('auth-login-ui').style.display='block';
+  switchAuthTab('login');
+  btn.disabled=false; btn.textContent='Nastavit nové heslo';
 }
 
 async function authSignOut(){
@@ -186,6 +221,11 @@ saveToStorage=function(){
 // POZOR: nevolat supa.from() přímo v callbacku — supabase-js v2 drží auth lock
 // během callbacku a vnořené volání by deadlockovalo. setTimeout(0) lock uvolní.
 supa.auth.onAuthStateChange((event, session)=>{
+  if(event==='PASSWORD_RECOVERY'){
+    // Reset link z emailu — zobraz formulář pro nové heslo, nenačítej data
+    setTimeout(showRecoveryUI,0);
+    return;
+  }
   if(session?.user){
     setTimeout(()=>showApp(session.user),0);
   } else {
