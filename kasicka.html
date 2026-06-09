@@ -1260,6 +1260,7 @@ function renderBudget(){}
 <!-- MODAL ROZPOČET -->
 <div class="modal-overlay" id="modal-bud">
   <div class="modal"><h3 id="bud-modal-title">Nový rozpočet</h3>
+  <div class="modal-body">
     <div class="form-group"><label>Název</label><input type="text" id="bud-name" placeholder="např. Jídlo, Cestování..."></div>
     <div class="form-group">
       <label>Typ rozpočtu</label>
@@ -1310,6 +1311,7 @@ function renderBudget(){}
       </div>
     </div>
     <div class="form-group"><label>Barva</label><div id="bud-color-picker" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;"></div></div>
+  </div>
     <div class="modal-actions">
       <button class="btn btn-danger" id="bud-delete-btn" onclick="deleteBud()" style="display:none">Smazat</button>
       <button class="btn btn-outline" onclick="closeModal('bud')">Zrušit</button>
