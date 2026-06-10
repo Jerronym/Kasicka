@@ -93,14 +93,15 @@ function renderDashboard(){
   else{
     budEl.innerHTML=budgets.slice(0,4).map(b=>{
       const spent=getBudgetSpentForRange(b, range);
-      const pct=b.limit?Math.min(spent/b.limit*100,100):0;
-      const over=b.limit>0&&spent>b.limit;
+      const limit=scaledBudgetLimit(b, range);
+      const pct=limit?Math.min(spent/limit*100,100):0;
+      const over=limit>0&&spent>limit;
       return`<div>
         <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px">
           <span>${escHtml(b.name)}</span>
-          <span style="color:${over?'var(--red)':'var(--text-secondary)'}">${b.limit?pct.toFixed(0)+' %  ·  '+fmt(spent)+' z '+fmt(b.limit):fmt(spent)}</span>
+          <span style="color:${over?'var(--red)':'var(--text-secondary)'}">${limit?pct.toFixed(0)+' %  ·  '+fmt(demoNum(spent))+' z '+fmt(demoNum(limit)):fmt(demoNum(spent))}</span>
         </div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${b.limit?pct:0}%;background:${over?'var(--red)':b.color}"></div></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${limit?pct:0}%;background:${over?'var(--red)':b.color}"></div></div>
       </div>`;
     }).join('');
   }

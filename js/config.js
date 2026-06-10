@@ -223,6 +223,24 @@ function calcBudgetSpent(b, range){
   return out-inc;
 }
 
+// ── Škálování limitu rozpočtu podle filtrovaného období ───
+// Počet nativních period, které „uplynuly" v rozsahu range až do dneška.
+// Aktuální (rozjetá) perioda se počítá celá → v červnu při ročním filtru = 6 měsíců.
+function elapsedPeriodCount(period, range){
+  const now=new Date(); now.setHours(0,0,0,0);
+  const from=new Date(range.from);
+  const effEnd=range.to<now?new Date(range.to):now;
+  if(effEnd<from) return 0;
+  if(period==='week') return Math.max(1,Math.ceil(((effEnd-from)/864e5+1)/7));
+  if(period==='year') return effEnd.getFullYear()-from.getFullYear()+1;
+  return(effEnd.getFullYear()*12+effEnd.getMonth())-(from.getFullYear()*12+from.getMonth())+1;
+}
+// Cíl naškálovaný na filtrovaný rozsah (jen periodické; kumulativní vrátí b.limit).
+function scaledBudgetLimit(b, range){
+  if(b.budType==='cumulative'||!range) return b.limit;
+  return b.limit*elapsedPeriodCount(b.period||'month',range);
+}
+
 // ── Loading indikátor ──────────────────────────────────────
 function showLoading(msg){
   msg=msg||'Načítání...';

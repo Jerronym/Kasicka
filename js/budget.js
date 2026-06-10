@@ -1,5 +1,32 @@
 // Kasička — rozpočty
 
+let budPeriodOffsets={}; // {budgetIndex: offset}  0 = aktuální perioda
+
+function shiftBudPeriod(i, dir){
+  budPeriodOffsets[i]=(budPeriodOffsets[i]||0)+dir;
+  renderBudget();
+}
+
+// Rozsah periody pro daný rozpočet a offset (0 = aktuální)
+function getBudgetPeriodRange(b, offset){
+  offset=offset||0;
+  const now=new Date(); now.setHours(0,0,0,0);
+  const period=b.period||'month';
+  if(period==='week'){
+    const f=new Date(now); f.setDate(f.getDate()-(f.getDay()||7)+1+offset*7);
+    const t=new Date(f); t.setDate(t.getDate()+6); t.setHours(23,59,59,999);
+    return{from:f,to:t};
+  }
+  if(period==='year'){
+    const y=now.getFullYear()+offset;
+    const t=new Date(y,11,31); t.setHours(23,59,59,999);
+    return{from:new Date(y,0,1),to:t};
+  }
+  const f=new Date(now.getFullYear(),now.getMonth()+offset,1);
+  const t=new Date(now.getFullYear(),now.getMonth()+offset+1,0); t.setHours(23,59,59,999);
+  return{from:f,to:t};
+}
+
 function setBudFlowMode(mode){
   currentBudFlowMode=mode;
   document.getElementById('bud-flow-out-btn').classList.toggle('active', mode==='vydaj');
@@ -136,16 +163,10 @@ function deleteBud(){
   markDirty('budget','dashboard');
 }
 
-function getBudgetTransactions(b){
-  const now=new Date(); now.setHours(0,0,0,0);
+function getBudgetTransactions(b, offset){
   let range=null;
   if(b.budType!=='cumulative'){
-    const period=b.period||'month';
-    let from;
-    if(period==='week'){from=new Date(now);from.setDate(from.getDate()-(from.getDay()||7)+1);}
-    else if(period==='year'){from=new Date(now.getFullYear(),0,1);}
-    else{from=new Date(now.getFullYear(),now.getMonth(),1);}
-    range={from,to:now};
+    range=getBudgetPeriodRange(b, offset||0);
   }
   const matchTxn=t=>{
     if(b.trackMode==='tags'){
@@ -171,7 +192,8 @@ function getBudgetTransactions(b){
 function renderBudgetTxnList(i){
   const b=budgets[i];
   if(!b) return '';
-  const txns=getBudgetTransactions(b);
+  const off=budPeriodOffsets[i]||0;
+  const txns=getBudgetTransactions(b, off);
   if(!txns.length) return '<div style="font-size:12.5px;color:var(--text-secondary);padding:8px 0 2px;text-align:center">Žádné transakce</div>';
   return txns.map(t=>{
     const sign=t.type==='prijem'?'+':'-';
@@ -191,7 +213,7 @@ function toggleBudgetDetail(i){
   const chevron=document.getElementById('bud-chevron-'+i);
   if(!detail) return;
   const open=detail.style.display==='none';
-  if(open&&!detail.dataset.loaded){
+  if(open){
     detail.innerHTML=renderBudgetTxnList(i);
     detail.dataset.loaded='1';
   }
@@ -199,21 +221,22 @@ function toggleBudgetDetail(i){
   if(chevron) chevron.style.transform=open?'rotate(90deg)':'';
 }
 
-function getBudgetSpent(b){
+function getBudgetSpent(b, offset){
   if(b.budType==='cumulative') return calcBudgetSpent(b, null);
-  const now=new Date(); now.setHours(0,0,0,0);
-  const period=b.period||'month';
-  let from;
-  if(period==='week'){from=new Date(now);from.setDate(from.getDate()-(from.getDay()||7)+1);}
-  else if(period==='year'){from=new Date(now.getFullYear(),0,1);}
-  else{from=new Date(now.getFullYear(),now.getMonth(),1);}
-  return calcBudgetSpent(b, {from, to:now});
+  return calcBudgetSpent(b, getBudgetPeriodRange(b, offset||0));
 }
 
-function periodLabel(b){
+function periodLabel(b, offset){
   if(b.budType==='cumulative') return 'celkový součet';
   const p=b.period||'month';
-  return p==='week'?'tento týden':p==='year'?'tento rok':'tento měsíc';
+  offset=offset||0;
+  if(offset===0) return p==='week'?'tento týden':p==='year'?'tento rok':'tento měsíc';
+  const range=getBudgetPeriodRange(b, offset);
+  if(p==='week'){
+    return range.from.toLocaleDateString('cs-CZ',{day:'2-digit',month:'short'})+' – '+range.to.toLocaleDateString('cs-CZ',{day:'2-digit',month:'short',year:'numeric'});
+  }
+  if(p==='year') return String(range.from.getFullYear());
+  return range.from.toLocaleDateString('cs-CZ',{month:'long',year:'numeric'});
 }
 
 function renderBudget(){
@@ -228,17 +251,20 @@ function renderBudget(){
     html+=`<div style="font-size:12px;font-weight:500;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Periodické rozpočty</div>`;
     html+=periodic.map((b,_)=>{
       const i=budgets.indexOf(b);
-      const spent=getBudgetSpent(b);
+      const off=budPeriodOffsets[i]||0;
+      const spent=getBudgetSpent(b, off);
       const pct=b.limit?Math.min(spent/b.limit*100,100):0;
       const over=b.limit>0&&spent>b.limit;
       const trackInfo=(b.flowMode==='net'?'čistý tok · ':'')+( b.trackMode==='tags'?(b.trackTags&&b.trackTags.length?'štítky: '+b.trackTags.map(t=>escHtml(t)).join(', '):'—'):(b.cats&&b.cats.length?'kategorie: '+b.cats.map(c=>escHtml(c)).join(', '):'kategorie: '+escHtml(b.name)));
       return`<div class="card" style="display:flex;flex-direction:column;gap:8px">
         <div onclick="toggleBudgetDetail(${i})" style="cursor:pointer;display:flex;flex-direction:column;gap:8px">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
-            <div>
+            <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
               <span id="bud-chevron-${i}" class="bud-chevron">▶</span>
               <span style="font-weight:500;font-size:14px">${escHtml(b.name)}</span>
-              <span style="font-size:11px;color:var(--text-secondary);margin-left:8px">${periodLabel(b)}</span>
+              <button class="btn-edit" onclick="event.stopPropagation();shiftBudPeriod(${i},-1)" style="padding:1px 7px;font-size:13px;line-height:1.4">‹</button>
+              <span style="font-size:11px;color:var(--text-secondary);min-width:80px;text-align:center">${periodLabel(b,off)}</span>
+              <button class="btn-edit" onclick="event.stopPropagation();shiftBudPeriod(${i},1)" style="padding:1px 7px;font-size:13px;line-height:1.4">›</button>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
               <span style="font-size:12.5px;color:${over?'var(--red)':'var(--text-secondary)'}">${fmt(demoNum(spent))} / ${fmt(demoNum(b.limit))}</span>
