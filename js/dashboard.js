@@ -91,7 +91,7 @@ function renderDashboard(){
   const budEl=document.getElementById('dash-budget-preview');
   if(!budgets.length){budEl.innerHTML='<p style="color:var(--text-secondary);font-size:13px;">Přidej kategorie v Rozpočtu</p>';}
   else{
-    budEl.innerHTML=budgets.slice(0,4).map(b=>{
+    budEl.innerHTML=budgets.filter(b=>budgetVisibleInRange(b,range)).slice(0,4).map(b=>{
       const spent=getBudgetSpentForRange(b, range);
       const limit=scaledBudgetLimit(b, range);
       const pct=limit?Math.min(spent/limit*100,100):0;

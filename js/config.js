@@ -209,18 +209,33 @@ function calcBudgetSpent(b, range){
       return cats.includes(t.cat);
     }
   };
+  // Efektivní meze = průnik předaného range a vlastního okna kumulativního rozpočtu
+  let lo=range?range.from:null;
+  let hi=range?range.to:null;
+  if(b.budType==='cumulative'){
+    if(b.startDate){const s=new Date(b.startDate+'T00:00:00');if(!lo||s>lo) lo=s;}
+    if(b.endDate)  {const e=new Date(b.endDate  +'T23:59:59');if(!hi||e<hi) hi=e;}
+  }
   const net=b.flowMode==='net';
   const list=transactions.filter(t=>{
     if(!matchTxn(t)) return false;
     if(t.type==='prevod') return false;
     if(!net&&t.type!=='vydaj') return false;
-    if(range){const d=new Date(t.date+'T12:00:00');return d>=range.from&&d<=range.to;}
+    if(lo||hi){const d=new Date(t.date+'T12:00:00');if(lo&&d<lo) return false;if(hi&&d>hi) return false;}
     return true;
   });
   const out=list.filter(t=>t.type==='vydaj').reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
   if(!net) return out;
   const inc=list.filter(t=>t.type==='prijem').reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
   return out-inc;
+}
+
+// Vrátí false když kumulativní rozpočet s nastaveným oknem leží zcela mimo daný range (pro Přehled)
+function budgetVisibleInRange(b, range){
+  if(b.budType!=='cumulative'||!range) return true;
+  if(b.startDate&&new Date(b.startDate+'T00:00:00')>range.to)   return false;
+  if(b.endDate  &&new Date(b.endDate  +'T23:59:59')<range.from) return false;
+  return true;
 }
 
 // ── Škálování limitu rozpočtu podle filtrovaného období ───

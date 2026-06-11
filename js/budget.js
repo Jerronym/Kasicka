@@ -104,6 +104,8 @@ function openBudModal(idx){
     document.getElementById('bud-name').value='';
     document.getElementById('bud-limit').value='';
     document.getElementById('bud-limit-cum').value='';
+    document.getElementById('bud-start-cum').value='';
+    document.getElementById('bud-end-cum').value='';
     document.getElementById('bud-period').value='month';
     setBudType('periodic');
     setBudTrackMode('cats');
@@ -115,6 +117,8 @@ function openBudModal(idx){
     document.getElementById('bud-name').value=b.name;
     document.getElementById('bud-limit').value=b.budType==='cumulative'?'':b.limit;
     document.getElementById('bud-limit-cum').value=b.budType==='cumulative'?b.limit:'';
+    document.getElementById('bud-start-cum').value=b.startDate||'';
+    document.getElementById('bud-end-cum').value=b.endDate||'';
     document.getElementById('bud-period').value=b.period||'month';
     selectedBudColor=b.color||cssVar('--accent');
     selectedBudCats=b.cats?[...b.cats]:[];
@@ -144,7 +148,10 @@ function saveBud(){
   const cats=trackMode==='cats'?(selectedBudCats.length?[...selectedBudCats]:[]):[];
   const trackTags=trackMode==='tags'?(selectedBudTags.length?[...selectedBudTags]:[]):[];
   const flowMode=currentBudFlowMode;
-  const obj={name,limit,color,budType,period,cats,trackMode,trackTags,flowMode,spent:0};
+  const startDate=budType==='cumulative'?(document.getElementById('bud-start-cum').value||undefined):undefined;
+  const endDate  =budType==='cumulative'?(document.getElementById('bud-end-cum').value  ||undefined):undefined;
+  if(startDate&&endDate&&startDate>endDate){toast('Datum zahájení musí být před ukončením.','warn');return;}
+  const obj={name,limit,color,budType,period,cats,trackMode,trackTags,flowMode,spent:0,startDate,endDate};
   if(editingBud===-1){
     budgets.push(obj);
   } else {
@@ -227,7 +234,15 @@ function getBudgetSpent(b, offset){
 }
 
 function periodLabel(b, offset){
-  if(b.budType==='cumulative') return 'celkový součet';
+  if(b.budType==='cumulative'){
+    const fmt_d=d=>d.toLocaleDateString('cs-CZ',{day:'numeric',month:'numeric',year:'numeric'});
+    const s=b.startDate?fmt_d(new Date(b.startDate+'T00:00:00')):null;
+    const e=b.endDate  ?fmt_d(new Date(b.endDate  +'T00:00:00')):null;
+    if(s&&e) return s+' – '+e;
+    if(s)    return 'od '+s;
+    if(e)    return 'do '+e;
+    return 'celkový součet';
+  }
   const p=b.period||'month';
   offset=offset||0;
   if(offset===0) return p==='week'?'tento týden':p==='year'?'tento rok':'tento měsíc';
