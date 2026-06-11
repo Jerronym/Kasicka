@@ -1116,7 +1116,7 @@ tr:hover td { background: var(--hover-bg); }
 
   /* FAB add-sheet */
   #mobile-add-sheet {
-    position: fixed; inset: 0; background: var(--scrim-mobile); z-index: 95;
+    position: fixed; inset: 0; background: var(--scrim-mobile); z-index: 200;
     display: none; align-items: flex-end; justify-content: center;
   }
   #mobile-add-sheet.open { display: flex; }
