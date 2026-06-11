@@ -92,6 +92,30 @@ function renderDashboard(){
   if(!budgets.length){budEl.innerHTML='<p style="color:var(--text-secondary);font-size:13px;">Přidej kategorie v Rozpočtu</p>';}
   else{
     budEl.innerHTML=budgets.filter(b=>budgetVisibleInRange(b,range)).slice(0,4).map(b=>{
+      if(b.budType==='cumulative'){
+        const periodSpent=getBudgetSpentForRange(b, range);
+        const totalSpent=calcBudgetSpent(b, null);
+        const limit=b.limit;
+        const over=limit>0&&totalSpent>limit;
+        const periodWord=dashPeriod==='tyden'?'týden':dashPeriod==='mesic'?'měsíc':dashPeriod==='rok'?'rok':'období';
+        const rightText=`${periodWord}: ${fmt(demoNum(periodSpent))}  ·  celkem ${fmt(demoNum(totalSpent))}${limit?' z '+fmt(demoNum(limit)):''}`;
+        let barHtml='';
+        if(limit){
+          const totalPct=Math.min(totalSpent/limit*100,100);
+          const periodPct=Math.min(periodSpent/limit*100,totalPct);
+          const histPct=totalPct-periodPct;
+          barHtml=over
+            ?`<div class="progress-bar"><div class="progress-fill" style="width:100%;background:var(--red)"></div></div>`
+            :`<div class="progress-bar" style="display:flex"><div style="width:${histPct}%;height:100%;background:color-mix(in srgb,${b.color} 40%,transparent);transition:width 0.5s cubic-bezier(0.22,1,0.36,1)"></div><div style="width:${periodPct}%;height:100%;background:${b.color};transition:width 0.5s cubic-bezier(0.22,1,0.36,1)"></div></div>`;
+        }
+        return`<div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;gap:8px;flex-wrap:wrap">
+            <span>${escHtml(b.name)}</span>
+            <span style="color:${over?'var(--red)':'var(--text-secondary)'}">${rightText}</span>
+          </div>
+          ${barHtml}
+        </div>`;
+      }
       const spent=getBudgetSpentForRange(b, range);
       const limit=scaledBudgetLimit(b, range);
       const pct=limit?Math.min(spent/limit*100,100):0;
