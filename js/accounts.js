@@ -28,7 +28,18 @@ function openAccModal(idx){
     setToggle(a.includeInTotal!==false);
     del.style.display='block';
   }
+  onAccCurrencyChange();
   openModal('acc');
+}
+
+// Zobrazit/skrýt pole pro kurz a předvyplnit efektivní kurz dle zvolené měny
+function onAccCurrencyChange(){
+  const cur=document.getElementById('acc-currency').value;
+  const group=document.getElementById('acc-rate-group');
+  if(cur==='CZK'){ group.style.display='none'; return; }
+  group.style.display='';
+  document.getElementById('acc-rate-label').textContent='Kurz: 1 '+cur+' = ? Kč';
+  document.getElementById('acc-rate').value=getRate(cur);
 }
 
 function saveAcc(){
@@ -43,6 +54,13 @@ function saveAcc(){
   if(!startDate){toast('Zadej datum počátečního zůstatku.','warn');return;}
   if(rawBalance!==''&&isNaN(desiredBalance)){toast('Zadej platný zůstatek.','warn');return;}
   const balance=isNaN(desiredBalance)?0:desiredBalance;
+  // Ruční kurz: pokud se liší od živého, ulož override; jinak ho zruš
+  if(currency!=='CZK'){
+    const rawRate=document.getElementById('acc-rate').value;
+    const rate=parseFloat(rawRate);
+    if(rawRate!==''&&!isNaN(rate)&&rate>0&&rate!==RATES[currency]) rateOverrides[currency]=rate;
+    else delete rateOverrides[currency];
+  }
   if(editingAcc===-1){
     const acc={name,initialBalance:balance,currency,type,includeInTotal,startDate};
     accounts.push(acc);

@@ -16,7 +16,32 @@ let activePeriod='mesic', periodFrom=null, periodTo=null, periodOffset=0;
 let dashPeriod='mesic', accPeriod='mesic', invPeriod='mesic';
 
 const RATES={CZK:1,EUR:25,USD:23};
-const toCZK=(amount,cur)=>amount*(RATES[cur]||1);
+// Ruční přepis kurzu (klíč = kód měny, hodnota = Kč za 1 jednotku) — má přednost před živým kurzem
+let rateOverrides={};
+const getRate=(cur)=>rateOverrides[cur]??RATES[cur]??1;
+const toCZK=(amount,cur)=>amount*getRate(cur);
+
+// Měny podporované Frankfurter API (všechny mají živý denní kurz do CZK) + symboly
+const CURRENCIES=[
+  {code:'CZK',symbol:'Kč'},{code:'EUR',symbol:'€'},{code:'USD',symbol:'$'},
+  {code:'GBP',symbol:'£'},{code:'CHF',symbol:'CHF'},{code:'PLN',symbol:'zł'},
+  {code:'HUF',symbol:'Ft'},{code:'NOK',symbol:'kr'},{code:'SEK',symbol:'kr'},
+  {code:'DKK',symbol:'kr'},{code:'JPY',symbol:'¥'},{code:'CAD',symbol:'C$'},
+  {code:'AUD',symbol:'A$'},{code:'NZD',symbol:'NZ$'},{code:'CNY',symbol:'¥'},
+  {code:'HKD',symbol:'HK$'},{code:'SGD',symbol:'S$'},{code:'TRY',symbol:'₺'},
+  {code:'RON',symbol:'lei'},{code:'BGN',symbol:'лв'},{code:'ISK',symbol:'kr'},
+  {code:'ILS',symbol:'₪'},{code:'INR',symbol:'₹'},{code:'KRW',symbol:'₩'},
+  {code:'MXN',symbol:'$'},{code:'BRL',symbol:'R$'},{code:'ZAR',symbol:'R'},
+  {code:'THB',symbol:'฿'},{code:'MYR',symbol:'RM'},{code:'PHP',symbol:'₱'},
+  {code:'IDR',symbol:'Rp'},
+];
+const curSymbol=(cur)=>{const c=CURRENCIES.find(x=>x.code===cur);return c?c.symbol:(cur||'');};
+function populateCurrencySelects(){
+  const ids=['acc-currency','txn-currency','st-currency','goal-currency','wish-currency'];
+  const opts=CURRENCIES.map(c=>`<option value="${c.code}">${c.code}</option>`).join('');
+  ids.forEach(id=>{const el=document.getElementById(id);if(el){const v=el.value;el.innerHTML=opts;el.value=v||'CZK';}});
+}
+document.addEventListener('DOMContentLoaded',populateCurrencySelects);
 
 // Aktualizace kurzů (Frankfurter API — CORS ok, free, bez klíče)
 let _ratesFetched=false;
@@ -25,16 +50,17 @@ async function fetchLiveRates(){
   const cacheKey='fx_rates_'+today();
   const cached=localStorage.getItem(cacheKey);
   if(cached){
-    try{const r=JSON.parse(cached);RATES.EUR=r.EUR;RATES.USD=r.USD;eurCzkRate=RATES.EUR;_ratesFetched=true;return;}catch(e){}
+    try{const r=JSON.parse(cached);Object.assign(RATES,r);eurCzkRate=RATES.EUR;_ratesFetched=true;return;}catch(e){}
   }
   try{
-    const r=await fetch('https://api.frankfurter.app/latest?from=CZK&to=EUR,USD',{signal:AbortSignal.timeout(6000)});
+    const r=await fetch('https://api.frankfurter.app/latest?from=CZK',{signal:AbortSignal.timeout(6000)});
     if(!r.ok) throw new Error('HTTP '+r.status);
     const d=await r.json();
-    if(d.rates?.EUR) RATES.EUR=+(1/d.rates.EUR).toFixed(4);
-    if(d.rates?.USD) RATES.USD=+(1/d.rates.USD).toFixed(4);
+    if(d.rates){
+      for(const c in d.rates){ if(d.rates[c]) RATES[c]=+(1/d.rates[c]).toFixed(4); }
+    }
     eurCzkRate=RATES.EUR;
-    localStorage.setItem(cacheKey,JSON.stringify({EUR:RATES.EUR,USD:RATES.USD}));
+    localStorage.setItem(cacheKey,JSON.stringify(RATES));
     _ratesFetched=true;
     console.log('Kurzy aktualizovány: EUR='+RATES.EUR.toFixed(3)+', USD='+RATES.USD.toFixed(3));
   }catch(e){
@@ -43,10 +69,9 @@ async function fetchLiveRates(){
 }
 function demoNum(n){ return n; }
 const fmt=(n,cur='CZK')=>{
-  if(privacyMode){const sym=cur==='EUR'?'€':cur==='USD'?'$':'Kč';return'••••• '+sym;}
-  if(cur==='EUR') return n.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
-  if(cur==='USD') return n.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' $';
-  return n.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' Kč';
+  const sym=curSymbol(cur);
+  if(privacyMode) return'••••• '+sym;
+  return n.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' '+sym;
 };
 function toggleDemoMode(){
   if(!demoMode){

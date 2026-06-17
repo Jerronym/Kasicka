@@ -159,6 +159,7 @@ function buildExportPayload(){
     invGroups:      invGroups.map(g=>({name:g.name||'',color:g.color||'#a78bfa',note:g.note||''})),
     goals:          goals.map(g=>({name:g.name||'',icon:g.icon||'🎯',color:g.color||'#a78bfa',targetAmount:g.targetAmount||0,currency:g.currency||'CZK',currentAmount:g.currentAmount||0,linkedAccIdx:g.linkedAccIdx!==undefined?g.linkedAccIdx:'',deadline:g.deadline||'',note:g.note||''})),
     wishlist:       wishlist.map(w=>({name:w.name||'',price:w.price||0,currency:w.currency||'CZK',priority:w.priority||'střední',url:w.url||'',note:w.note||'',addedDate:w.addedDate||'',bought:w.bought||false,boughtDate:w.boughtDate||''})),
+    rateOverrides:  rateOverrides||{},
   };
 }
 
@@ -260,6 +261,7 @@ function applyImport(d){
   invHistory=    d.invHistory||[];
   goals=         (d.goals||[]).map(g=>({name:'',icon:'🎯',color:'#a78bfa',targetAmount:0,currency:'CZK',currentAmount:0,linkedAccIdx:'',deadline:'',note:'',...g}));
   wishlist=      (d.wishlist||[]).map(w=>({name:'',price:0,currency:'CZK',priority:'střední',url:'',note:'',addedDate:'',bought:false,boughtDate:'',...w}));
+  rateOverrides= d.rateOverrides||{};
 }
 
 // ── Export / Import JSON ───────────────────────────────────
