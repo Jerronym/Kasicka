@@ -41,7 +41,8 @@ function populateCurrencySelects(){
   const opts=CURRENCIES.map(c=>`<option value="${c.code}">${c.code}</option>`).join('');
   ids.forEach(id=>{const el=document.getElementById(id);if(el){const v=el.value;el.innerHTML=opts;el.value=v||'CZK';}});
 }
-document.addEventListener('DOMContentLoaded',populateCurrencySelects);
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',populateCurrencySelects);
+else populateCurrencySelects();
 
 // Aktualizace kurzů (Frankfurter API — CORS ok, free, bez klíče)
 let _ratesFetched=false;

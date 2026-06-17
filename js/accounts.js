@@ -2,6 +2,7 @@
 
 function openAccModal(idx){
   editingAcc=idx;
+  if(document.getElementById('acc-currency').options.length<=1) populateCurrencySelects();
   const del=document.getElementById('acc-delete-btn');
   const setToggle=(val)=>{
     const cb=document.getElementById('acc-include');
