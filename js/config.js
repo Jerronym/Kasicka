@@ -34,6 +34,8 @@ const CURRENCIES=[
   {code:'MXN',symbol:'$'},{code:'BRL',symbol:'R$'},{code:'ZAR',symbol:'R'},
   {code:'THB',symbol:'฿'},{code:'MYR',symbol:'RM'},{code:'PHP',symbol:'₱'},
   {code:'IDR',symbol:'Rp'},
+  // Měny bez živého kurzu ve Frankfurter API — vyžadují ruční zadání kurzu k CZK
+  {code:'KGS',symbol:'сом'},
 ];
 const curSymbol=(cur)=>{const c=CURRENCIES.find(x=>x.code===cur);return c?c.symbol:(cur||'');};
 function populateCurrencySelects(){

@@ -40,7 +40,9 @@ function onAccCurrencyChange(){
   if(cur==='CZK'){ group.style.display='none'; return; }
   group.style.display='';
   document.getElementById('acc-rate-label').textContent='Kurz: 1 '+cur+' = ? Kč';
-  document.getElementById('acc-rate').value=getRate(cur);
+  // U měny bez živého kurzu nech pole prázdné (ať uživatel zadá vlastní), jinak předvyplň efektivní kurz
+  const known=(rateOverrides[cur]!=null)||(RATES[cur]!=null);
+  document.getElementById('acc-rate').value=known?getRate(cur):'';
 }
 
 function saveAcc(){
