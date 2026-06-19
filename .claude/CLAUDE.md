@@ -25,6 +25,12 @@
 - **NEVER** skip markDirty() or saveToStorage() after modifying global data arrays
 - **NEVER** use frameworks, bundlers, or module imports — everything runs in global scope
 - **NEVER** sync theme preference to cloud — it's per-device only (localStorage)
+- **NEVER** edit `sw.js`, any `js/*.js`, `css/style.css`, or `kasicka.html` without bumping `CACHE` in `sw.js` (e.g. `kasicka-v1`→`v2`) — the service worker is cache-first on the app shell, so without a version bump browsers serve stale code after deploy.
+
+## Offline / PWA
+- `sw.js` — service worker, cache-first app shell, network-only for Supabase + live-data endpoints. Requires HTTPS/localhost (not file://).
+- Offline writes persist to localStorage (`kasicka_v1_<userId>`) + a pending flag (`kasicka_pending_<userId>`). `saveToCloud()` returns true/false; on failure the pending flag stays set and resyncs via the `online` listener or next debounce.
+- `loadFromCloud()` is conflict-safe: if pending offline edits are newer than cloud → use local + push; if cloud was changed by another device → `confirmDialog` asks which wins. Never blindly overwrite local with stale cloud.
 
 ## External Services
 - Supabase — auth + cloud storage + shared groups/transactions

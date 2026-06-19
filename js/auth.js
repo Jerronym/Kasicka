@@ -95,20 +95,52 @@ async function authSignOut(){
 
 async function loadFromCloud(){
   if(!currentUser) return;
-  const {data,error}=await supa.from('user_data').select('data,updated_at').eq('user_id',currentUser.id).single();
-  if(error&&error.code!=='PGRST116'){
-    console.error('loadFromCloud selhalo:',error);
-    if(typeof toast==='function') toast('Nepodařilo se načíst data z cloudu: '+(error.message||error.code),'err');
-    if(typeof loadFromStorage==='function') loadFromStorage();
-    markDirty();
-    return;
+  let data=null, error=null;
+  try{
+    const res=await supa.from('user_data').select('data,updated_at').eq('user_id',currentUser.id).single();
+    data=res.data; error=res.error;
+  }catch(e){ error=e; }
+  const netFailed = !!(error && error.code!=='PGRST116'); // PGRST116 = nový uživatel (0 řádků)
+  if(netFailed){
+    console.warn('loadFromCloud: cloud nedostupný, používám lokální data:', error.message||error.code||error);
+    if(typeof toast==='function') toast('Cloud nedostupný — pracuji s lokálními daty.','warn');
   }
-  if(data?.data){
-    applyImport(data.data);
-    _lastCloudSave=data.updated_at||null;
+  // Konflikt-bezpečné načtení: nesynchronizované offline změny nesmí stale cloud přepsat.
+  const cloudData=data?.data||null;
+  const cloudTime=data?.updated_at||null;
+  let localSnap=null;
+  try{ const raw=localStorage.getItem(LS_KEY+'_'+currentUser.id); if(raw) localSnap=JSON.parse(raw); }catch(e){}
+  if(netFailed){
+    // Offline — použij lokální per-user snapshot; pending flag necháme pro pozdější resync.
+    applyImport(localSnap||{});
+  } else if(hasPendingSync() && localSnap){
+    const localTime=localSnap._exported||null;
+    if(!cloudTime || (localTime && localTime>cloudTime)){
+      // Offline změny jsou novější (nebo cloud prázdný) — použij lokální a nahraj nahoru.
+      applyImport(localSnap);
+      _lastCloudSave=cloudTime;
+      saveToCloud().then(ok=>{ if(ok) toast('Offline změny synchronizovány','success'); });
+    } else {
+      // Cloud byl mezitím změněn z jiného zařízení → konflikt, zeptej se.
+      const useLocal=await confirmDialog('Máš offline změny, které nejsou v cloudu, ale cloud byl mezitím změněn z jiného zařízení.\n\nAno = použít offline změny (přepíše cloud).\nNe = načíst cloud (offline změny se zahodí).');
+      if(useLocal){
+        applyImport(localSnap);
+        _lastCloudSave=cloudTime;
+        saveToCloud().then(ok=>{ if(ok) toast('Offline změny synchronizovány','success'); });
+      } else {
+        applyImport(cloudData||{});
+        _lastCloudSave=cloudTime;
+        clearPendingSync();
+      }
+    }
+  } else if(cloudData){
+    applyImport(cloudData);
+    _lastCloudSave=cloudTime;
+    clearPendingSync();
   } else {
     // Nový uživatel — začni s prázdnými daty
     applyImport({});
+    clearPendingSync();
   }
   processRecurringTxns();
   initCategories();
@@ -135,9 +167,20 @@ async function loadFromCloud(){
 
 let _lastCloudSave=null; // timestamp posledního uložení do cloudu
 
+// ── Pending sync flag (offline → online) ───────────────────
+// Nastaven když máme lokální změny ještě nenahrané do cloudu (offline zápis).
+// Persistuje v localStorage, takže přežije reload i pád appky bez signálu.
+function PENDING_KEY(){ return 'kasicka_pending_'+(currentUser?currentUser.id:'anon'); }
+function setPendingSync(){ try{localStorage.setItem(PENDING_KEY(),'1');}catch(e){} }
+function clearPendingSync(){ try{localStorage.removeItem(PENDING_KEY());}catch(e){} }
+function hasPendingSync(){ try{return localStorage.getItem(PENDING_KEY())==='1';}catch(e){return false;} }
+
+// Vrací true při úspěšném uložení do cloudu, false při selhání (offline) nebo
+// přeskočení konfliktu. Při false zůstává pending flag nastavený → dosynchronizuje
+// se přes 'online' listener nebo příští debounce.
 async function saveToCloud(){
-  if(!currentUser) return;
-  if(demoMode) return;
+  if(!currentUser) return true;
+  if(demoMode) return true;
   // Detekce konfliktu: zkontroluj, zda jiné zařízení neuložilo novější data
   if(_lastCloudSave){
     try{
@@ -146,19 +189,28 @@ async function saveToCloud(){
         const ok=await confirmDialog('Data v cloudu byla změněna z jiného zařízení.\nPřepsat cloudová data lokálními?');
         if(!ok){
           toast('Uložení do cloudu přeskočeno. Načti znovu pro synchronizaci.','warn');
-          return;
+          return false;
         }
       }
-    }catch(e){/* pokud kontrola selže, pokračuj v uložení */}
+    }catch(e){/* pokud kontrola selže (offline?), pokračuj v uložení */}
   }
   const payload=buildExportPayload();
   const now=new Date().toISOString();
-  await supa.from('user_data').upsert({
-    user_id:currentUser.id,
-    data:payload,
-    updated_at:now
-  },{onConflict:'user_id'});
+  try{
+    const {error}=await supa.from('user_data').upsert({
+      user_id:currentUser.id,
+      data:payload,
+      updated_at:now
+    },{onConflict:'user_id'});
+    if(error) throw error;
+  }catch(e){
+    // Offline / síťová chyba — pending flag necháme nastavený pro pozdější resync.
+    console.warn('saveToCloud selhalo (offline?):',e.message||e);
+    return false;
+  }
   _lastCloudSave=now;
+  clearPendingSync();
+  return true;
 }
 
 function showApp(user){
@@ -202,14 +254,16 @@ saveToStorage=function(){
   // Uložit lokálně (per uživatel)
   const lsKey=currentUser?LS_KEY+'_'+currentUser.id:LS_KEY;
   try{localStorage.setItem(lsKey,JSON.stringify(buildExportPayload()));}catch(e){console.warn('Chyba při ukládání do localStorage (auth):',e.message);}
+  // Lokální změna ještě není v cloudu — označ jako pending (resync po připojení).
+  if(currentUser) setPendingSync();
   if(syncFileHandle) writeSyncFile();
-  // Uložit do cloudu (debounce 2s)
+  // Uložit do cloudu (debounce 1.5s)
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
     if(currentUser){
-      await saveToCloud();
+      const ok=await saveToCloud();
       const ind=document.getElementById('save-indicator');
-      ind.textContent='✓ Uloženo';
+      ind.textContent=ok?'✓ Uloženo':'⏳ Čeká na připojení';
       ind.style.display='block';
       clearTimeout(ind._t);
       ind._t=setTimeout(()=>ind.style.display='none',2000);
@@ -269,3 +323,21 @@ if(!navigator.onLine){
   markDirty();
   fetchLiveRates();
 }
+
+// ── Auto-resync po obnovení připojení ──────────────────────
+// Když se vrátí signál a máme nesynchronizované offline změny, dotlač je do cloudu.
+window.addEventListener('online', async ()=>{
+  if(currentUser && !demoMode && hasPendingSync()){
+    const ok=await saveToCloud();
+    if(ok) toast('Synchronizováno','success');
+  }
+});
+window.addEventListener('offline', ()=>{
+  const ind=document.getElementById('save-indicator');
+  if(ind){
+    ind.textContent='⏳ Offline';
+    ind.style.display='block';
+    clearTimeout(ind._t);
+    ind._t=setTimeout(()=>ind.style.display='none',3000);
+  }
+});

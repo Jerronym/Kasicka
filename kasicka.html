@@ -1537,6 +1537,14 @@ setInterval(_mirrorUserToNav, 1000);
   const t = localStorage.getItem('kasicka_theme') || '';
   syncThemeSelects(t);
 })();
+
+// ── Service worker (PWA offline) ────────────────────────
+// Funguje jen přes HTTPS / localhost, ne přes file://.
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(err=>console.warn('SW registrace selhala:', err));
+  });
+}
 </script>
 </body>
 </html>
