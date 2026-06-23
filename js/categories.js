@@ -15,11 +15,9 @@ function getCatIcon(name){
 
 function getSortedCategories(){
   // Seřadit kategorie podle celkové utracené částky (sestupně)
-  return [...categories].sort((a,b)=>{
-    const sumA=transactions.filter(t=>t.type==='vydaj'&&t.cat===a.name).reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
-    const sumB=transactions.filter(t=>t.type==='vydaj'&&t.cat===b.name).reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
-    return sumB-sumA;
-  });
+  const sums={};
+  transactions.forEach(t=>{if(t.type==='vydaj') sums[t.cat]=(sums[t.cat]||0)+toCZK(t.amount,t.cur);});
+  return [...categories].sort((a,b)=>(sums[b.name]||0)-(sums[a.name]||0));
 }
 
 function renderTagQuickPicks(){
@@ -27,7 +25,7 @@ function renderTagQuickPicks(){
   if(!el) return;
   const allTags=getAllTags();
   if(!allTags.length){el.innerHTML='';return;}
-  el.innerHTML=allTags.slice(0,20).map(tag=>{
+  el.innerHTML=allTags.map(tag=>{
     const active=currentTags.includes(tag);
     return`<span onclick="quickAddTag('${escAttr(tag)}')"
       style="padding:3px 9px;border-radius:20px;font-size:11.5px;cursor:pointer;user-select:none;
@@ -97,7 +95,10 @@ function saveCat(){
     const oldName=categories[editingCat].name;
     categories[editingCat]={name,color:selectedCatColor,icon:selectedCatIcon};
     transactions.forEach(t=>{if(t.cat===oldName) t.cat=name;});
-    budgets.forEach(b=>{if(b.name===oldName) b.name=name;});
+    budgets.forEach(b=>{
+      if(b.name===oldName) b.name=name;
+      if(b.cats) b.cats=b.cats.map(c=>c===oldName?name:c);
+    });
   }
   saveToStorage();
   closeModal('cat');
@@ -120,18 +121,22 @@ function deleteCat(){
 function renderCategories(){
   const grid=document.getElementById('categories-grid');
   if(!grid) return;
-  // Seřadit podle utracené částky
+  // Seřadit podle utracené částky — single-pass precomputation
+  const counts={}, spendings={};
+  transactions.forEach(t=>{
+    counts[t.cat]=(counts[t.cat]||0)+1;
+    if(t.type==='vydaj') spendings[t.cat]=(spendings[t.cat]||0)+toCZK(t.amount,t.cur);
+  });
   const withStats=categories.map((c,i)=>({
     c, i,
-    usedCount:transactions.filter(t=>t.cat===c.name).length,
-    totalSpent:transactions.filter(t=>t.cat===c.name&&t.type==='vydaj').reduce((s,t)=>s+toCZK(t.amount,t.cur),0)
+    usedCount:counts[c.name]||0,
+    totalSpent:spendings[c.name]||0
   })).sort((a,b)=>b.totalSpent-a.totalSpent);
   grid.innerHTML=withStats.map(({c,i,usedCount,totalSpent})=>{
-    return`<div class="card" style="display:flex;align-items:center;gap:14px;padding:14px 16px;">
-      <div style="width:44px;height:44px;border-radius:10px;background:${c.color}22;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;border:1px solid ${c.color}44;">${c.icon}</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:600;letter-spacing:0.3px">${escHtml(c.name)}</div>
-        <div style="font-size:11.5px;color:var(--text-secondary);margin-top:2px">${usedCount} transakcí · ${fmt(totalSpent)}</div>
+    return`<div class="card" style="display:flex;align-items:center;gap:12px;padding:10px 14px;">
+      <div style="width:36px;height:36px;border-radius:9px;background:${c.color};display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;"><span style="filter:grayscale(1) brightness(10);">${c.icon}</span></div>
+      <div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;">
+        <span style="font-weight:600;">${escHtml(c.name)}</span><span style="color:var(--text-secondary);font-size:11.5px;"> · ${usedCount} txn · ${fmt(totalSpent)}</span>
       </div>
       <button class="btn-edit" onclick="openCatModal(${i})">Upravit</button>
     </div>`;

@@ -2,17 +2,51 @@
 
 // ── Theme přepínač ──────────────────────────────────
 const THEME_LS_KEY='kasicka_theme';
+const THEME_COLORS={
+  '':'#1a1a2e', light:'#f5f5f7', ocean:'#0a1628',
+  forest:'#0a1f0a', sunset:'#1a0a1a', cyberpunk:'#0d0d0d', warm:'#ece0d1'
+};
 function setTheme(id){
   if(id) document.documentElement.dataset.theme=id;
   else delete document.documentElement.dataset.theme;
   localStorage.setItem(THEME_LS_KEY,id||'');
-  const s=document.getElementById('theme-select');
-  const m=document.getElementById('mobile-theme-select');
-  if(s) s.value=id||'';
-  if(m) m.value=id||'';
+  ['theme-select','mobile-theme-select','mobile-menu-theme-select'].forEach(sid=>{
+    const el=document.getElementById(sid);
+    if(el) el.value=id||'';
+  });
+  const tc=document.querySelector('meta[name="theme-color"]');
+  if(tc) tc.content=THEME_COLORS[id||'']||'#1a1a2e';
   markDirty('dashboard','transactions','accounts','investments','budget');
 }
-function loadTheme(){setTheme(localStorage.getItem(THEME_LS_KEY)||'');}
+function loadTheme(){
+  let saved=localStorage.getItem(THEME_LS_KEY);
+  if(!saved&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches) saved='light';
+  setTheme(saved||'');
+}
+
+// ── Privacy mode (skrýt zůstatky) ──────────────────────
+function applyPrivacyMode(){
+  const on=document.getElementById('privacy-icon-on');
+  const off=document.getElementById('privacy-icon-off');
+  if(on)  on.style.display =privacyMode?'none':'';
+  if(off) off.style.display=privacyMode?'':'none';
+  // Mobile topbar eye icons
+  const mon=document.getElementById('mobile-privacy-icon-on');
+  const moff=document.getElementById('mobile-privacy-icon-off');
+  if(mon)  mon.style.display =privacyMode?'none':'';
+  if(moff) moff.style.display=privacyMode?'':'none';
+}
+function togglePrivacyMode(){
+  privacyMode=!privacyMode;
+  localStorage.setItem('kasicka_privacy',privacyMode?'1':'');
+  applyPrivacyMode();
+  markDirty('dashboard','transactions','accounts','investments','budget');
+  if(typeof renderAccChart==='function')   renderAccChart();
+  if(typeof renderInvChart==='function')   renderInvChart();
+  if(typeof renderBalanceChart==='function') renderBalanceChart();
+  if(typeof renderTrendChart==='function') renderTrendChart();
+  if(typeof renderCategoryChart==='function') renderCategoryChart();
+}
 
 // ── Toast notifikace ──────────────────────────────────
 // Typy: 'error' (červená), 'success' (zelená), 'warn' (žlutá), 'info' (modrá)
@@ -43,15 +77,54 @@ function updateToggle(id){
 function showSection(id){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('visible'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.nav-child').forEach(n=>n.classList.remove('active'));
   document.querySelectorAll('.bnav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('section-'+id).classList.add('visible');
-  document.getElementById('nav-'+id).classList.add('active');
+  // Nav active states — links-group highlights parent + specific group child
+  if(id==='links-group'){
+    const navLinks=document.getElementById('nav-links');
+    if(navLinks) navLinks.classList.add('active');
+    const child=document.getElementById('nav-sg-'+viewingSharedGroup);
+    if(child) child.classList.add('active');
+    expandSharingNav();
+  } else if(id==='links'){
+    const navLinks=document.getElementById('nav-links');
+    if(navLinks) navLinks.classList.add('active');
+    expandSharingNav();
+  } else {
+    const navEl=document.getElementById('nav-'+id);
+    if(navEl) navEl.classList.add('active');
+  }
   const bnav=document.getElementById('bnav-'+id);
   if(bnav) bnav.classList.add('active');
   _activeSection=id;
-  // Renderuj sekci jen pokud je dirty (nebo při prvním zobrazení)
   _dirty[id]=true;
   _renderVisible();
+}
+
+// ── Sidebar Sdílení dropdown ──────────────────────────
+function toggleSharingNav(){
+  const grp=document.getElementById('nav-group-links');
+  if(grp) grp.classList.toggle('expanded');
+  showSection('links');
+}
+function expandSharingNav(){
+  const grp=document.getElementById('nav-group-links');
+  if(grp) grp.classList.add('expanded');
+}
+function renderSidebarGroups(){
+  const container=document.getElementById('nav-links-children');
+  if(!container) return;
+  container.innerHTML=sharedGroupsList.map(g=>
+    `<button class="nav-child" id="nav-sg-${g.id}" onclick="openSharedGroupPage('${g.id}')">${escHtml(g.name)}</button>`
+  ).join('');
+  // Mobile
+  const mob=document.getElementById('mobile-links-children');
+  if(mob){
+    mob.innerHTML=sharedGroupsList.map(g=>
+      `<button class="mobile-group-item" onclick="closeMobileMenu();openSharedGroupPage('${g.id}')">${escHtml(g.name)}</button>`
+    ).join('');
+  }
 }
 
 // ── Mobilní menu ──────────────────────────────────────
@@ -60,6 +133,14 @@ function toggleMobileMenu(){
 }
 function closeMobileMenu(){
   document.getElementById('mobile-menu').classList.remove('open');
+}
+
+// ── FAB add-sheet ──────────────────────────────────────
+function openMobileAddSheet(){
+  document.getElementById('mobile-add-sheet').classList.add('open');
+}
+function closeMobileAddSheet(){
+  document.getElementById('mobile-add-sheet').classList.remove('open');
 }
 function updateMobileUserInfo(){
   const el=document.getElementById('mobile-user-info');
@@ -426,6 +507,36 @@ function handleAcKey(ev, inputId, listId){
   else if(ev.key==='ArrowUp'){ev.preventDefault();if(active)active.classList.remove('ac-active');idx=Math.max(idx-1,0);items[idx]?.classList.add('ac-active');items[idx]?.scrollIntoView({block:'nearest'});}
   else if(ev.key==='Enter'&&active){ev.preventDefault();document.getElementById(inputId).value=active.getAttribute('data-val');list.style.display='none';}
   else if(ev.key==='Escape'){list.style.display='none';}
+}
+
+// Potvrzovací dialog — vrací Promise<boolean>
+function confirmDialog(message){
+  return new Promise(resolve=>{
+    const overlay=document.createElement('div');
+    overlay.style.cssText='display:flex;position:fixed;inset:0;background:var(--scrim);align-items:center;justify-content:center;z-index:200;';
+    const box=document.createElement('div');
+    box.style.cssText='background:var(--sidebar-bg);border:1px solid var(--card-border);border-radius:16px;padding:24px;width:380px;max-width:96vw;text-align:center;';
+    const msg=document.createElement('p');
+    msg.style.cssText='font-size:14px;color:var(--text-primary);margin-bottom:20px;line-height:1.5;';
+    msg.textContent=message;
+    const btnRow=document.createElement('div');
+    btnRow.style.cssText='display:flex;gap:10px;justify-content:center;';
+    const btnYes=document.createElement('button');
+    btnYes.className='btn-main';
+    btnYes.textContent='Ano';
+    btnYes.style.cssText='padding:8px 24px;border-radius:8px;cursor:pointer;';
+    const btnNo=document.createElement('button');
+    btnNo.textContent='Ne';
+    btnNo.style.cssText='padding:8px 24px;border-radius:8px;cursor:pointer;background:var(--card-bg);border:1px solid var(--card-border);color:var(--text-primary);';
+    btnRow.append(btnYes,btnNo);
+    box.append(msg,btnRow);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    const close=(val)=>{overlay.remove();resolve(val);};
+    btnYes.addEventListener('click',()=>close(true));
+    btnNo.addEventListener('click',()=>close(false));
+    overlay.addEventListener('click',e=>{if(e.target===overlay)close(false);});
+  });
 }
 
 // Zavři autocomplete při kliknutí mimo

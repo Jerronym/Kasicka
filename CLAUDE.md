@@ -36,9 +36,10 @@ Platne sekce: `dashboard`, `transactions`, `accounts`, `investments`, `budget`, 
 
 ### Data persistence flow
 1. **localStorage** — `saveToStorage()` uklada okamzite (klic: `kasicka_v1_<userId>`)
-2. **Cloud sync** — `saveToCloud()` pres debounce 1.5s (auth.js), uklada cely JSON snapshot do Supabase `user_data` tabulky. Pred zapisem kontroluje `updated_at` proti `cloudUpdatedAt` (config.js) — pokud cloud zmenilo jine zarizeni, misto slepeho prepsani se zepta uzivatele (confirm). Po uspesnem ulozeni nastavi `cloudUpdatedAt` na novou verzi.
-   - **Auto-sync mezi zarizenimi** — `checkCloudFreshness()` overuje `updated_at` a pri zmene vola `reloadFromCloud()`. Spousteni: `visibilitychange` (navrat na kartu), `focus`, `online`, a periodicky kazdych 30s. Hlidano tak, aby neobnovovalo pri otevrenem modalu nebo cekajicim `saveTimer` (neulozene zmeny). Resi problem stale otevrene karty pracujici se zastaralym snapshotem.
-3. **Import/Export** — `buildExportPayload()` serializuje vse s `_version: 5`, `applyImport(d)` deserializuje + `migrateImport(d)` upgraduje stare verze (v0→v1→v2→v3→v4→v5)
+2. **Cloud sync** — `saveToCloud()` pres debounce 1.5s (auth.js), uklada cely JSON snapshot do Supabase `user_data` tabulky. Offline-safe: pending-sync flag v localStorage (`kasicka_pending_<userId>`), resync pres `online` listener. Pred zapisem kontroluje `updated_at` proti `_lastCloudSave` (auth.js) — pokud cloud zmenilo jine zarizeni, misto slepeho prepsani se zepta uzivatele (`confirmDialog`). Po uspesnem ulozeni nastavi `_lastCloudSave`.
+   - **Auto-sync mezi zarizenimi** — `checkCloudFreshness()` overuje `updated_at` a pri zmene (`!== _lastCloudSave`) vola `reloadFromCloud()`. Spousteni: `visibilitychange` (navrat na kartu), `focus`, `online`, a periodicky kazdych 30s. Hlidano tak, aby neobnovovalo pri otevrenem modalu (`[id^="modal-"].open`) ani pri `hasPendingSync()` (neulozene offline zmeny). Resi problem stale otevrene karty pracujici se zastaralym snapshotem — diky nemu nevznikne konflikt pri ulozeni.
+3. **Service worker (PWA)** — `sw.js`, cache `kasicka-v{N}`. Network-first pro navigaci, cache-first pro app shell, network-only pro Supabase/zive kurzy. **POZOR: pri kazde zmene shell souboru zvysit `CACHE` verzi v sw.js** (jinak prohlizec servíruje stary nakesovany kod). Registrace v `kasicka.html`.
+4. **Import/Export** — `buildExportPayload()` serializuje vse s `_version: 5`, `applyImport(d)` deserializuje + `migrateImport(d)` upgraduje stare verze (v0→v1→v2→v3→v4→v5)
 
 ### Supabase infrastruktura
 - `supabase_migration_shared.sql` — tabulky pro sdileni (user_profiles, friendships, shared_groups, shared_transactions) + RLS politiky

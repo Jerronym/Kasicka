@@ -31,6 +31,7 @@ serve(async (req) => {
       "query1.finance.yahoo.com",
       "query2.finance.yahoo.com",
       "api.coingecko.com",
+      "api.twelvedata.com",
     ];
     const parsed = new URL(url);
     if (!allowed.some((d) => parsed.hostname.endsWith(d))) {
@@ -38,6 +39,15 @@ serve(async (req) => {
         status: 403,
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
       });
+    }
+
+    // Twelve Data: inject API key server-side (env var TWELVE_DATA_KEY)
+    if (parsed.hostname === "api.twelvedata.com") {
+      const tdKey = Deno.env.get("TWELVE_DATA_KEY") || "";
+      if (tdKey) {
+        parsed.searchParams.set("apikey", tdKey);
+        url = parsed.toString();
+      }
     }
 
     const resp = await fetch(url, {

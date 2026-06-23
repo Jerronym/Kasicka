@@ -14,7 +14,7 @@ function openTxnModal(idx, recurring=false){
     document.getElementById('txn-amount').value='';
     document.getElementById('txn-type').value='vydaj';
     document.getElementById('txn-currency').value='CZK';
-    document.getElementById('txn-cat').value='Jídlo';
+    document.getElementById('txn-cat').value=categories.length?categories[0].name:'JÍDLO';
     del.style.display='none';
   } else {
     const t=transactions[idx];
@@ -181,6 +181,16 @@ async function saveTxn(){
   }
   recurringMode=false;
 
+  // Kontrola: transakce před počátečním datem účtu
+  const accI=parseInt(accIdx);
+  if(isNaN(accI)||accI<0||accI>=accounts.length){toast('Neplatný účet.','warn');return;}
+  const acc=accounts[accI];
+  if(acc&&acc.startDate&&date<acc.startDate){
+    const ok=await confirmDialog('Transakce ('+new Date(date+'T12:00:00').toLocaleDateString('cs-CZ')+') je před počátečním datem účtu „'+acc.name+'" ('+new Date(acc.startDate+'T12:00:00').toLocaleDateString('cs-CZ')+').\nPosunout počáteční datum účtu?');
+    if(!ok) return;
+    acc.startDate=date;
+  }
+
   if(editingTxn===-1){
     const txnObj={desc,tags,amount,date,type,cat,cur,accIdx};
     if(recurringObj) txnObj.recurring=recurringObj;
@@ -297,7 +307,7 @@ async function deleteSharedTxnForLocal(txn){
   }
 }
 
-function saveTransfer(){
+async function saveTransfer(){
   const fi=document.getElementById('tr-from').value;
   const ti=document.getElementById('tr-to').value;
   const amount=parseFloat(document.getElementById('tr-amount').value);
@@ -308,6 +318,14 @@ function saveTransfer(){
   if(isNaN(amount)||amount<=0){toast('Zadej platnou částku.','warn');return;}
   if(!date){toast('Zadej datum.','warn');return;}
   const from=accounts[fi],to=accounts[ti];
+  // Kontrola: převod před počátečním datem účtu
+  const earlyAccs=[from,to].filter(a=>a&&a.startDate&&date<a.startDate);
+  if(earlyAccs.length){
+    const names=earlyAccs.map(a=>'„'+a.name+'" ('+new Date(a.startDate+'T12:00:00').toLocaleDateString('cs-CZ')+')').join(', ');
+    const ok=await confirmDialog('Převod ('+new Date(date+'T12:00:00').toLocaleDateString('cs-CZ')+') je před počátečním datem účtu '+names+'.\nPosunout počáteční datum?');
+    if(!ok) return;
+    earlyAccs.forEach(a=>{a.startDate=date;});
+  }
   const rate=RATES[from.currency]/RATES[to.currency];
   const converted=amount*rate;
   transactions.unshift({desc:note+' ('+from.name+' → '+to.name+')',amount,date,type:'prevod',cat:'Převod',cur:from.currency,accIdx:fi,toAccIdx:ti,convertedAmount:converted,toCur:to.currency});
@@ -340,13 +358,18 @@ function getBalance(i){
 function getInvValue(i){
   const inv=investments[i];
   if(!inv) return 0;
-  // API investice – hodnota pochází z API
-  if(inv.apiSymbol) return inv.value||0;
+  // API investice – inv.value je vždy v CZK (nastavuje buildInvHistoryFromAPI, autoUpdatePrices atd.)
+  // shares×lastPrice je záloha, ale lastPrice může být v cizí měně (stará data)
+  if(inv.apiSymbol){
+    if(inv.value) return inv.value;
+    if(inv.shares&&inv.lastPrice) return Math.round(inv.shares*inv.lastPrice*100)/100;
+    return 0;
+  }
   // Ruční investice – odvozená hodnota
   const hist=inv.history||[];
   let baseValue=inv.value||0, lastManualDate='';
   for(let j=hist.length-1;j>=0;j--){
-    if(!hist[j].isPurchase){baseValue=hist[j].value;lastManualDate=hist[j].date;break;}
+    if(!hist[j].isPurchase&&!hist[j].isSale){baseValue=hist[j].value;lastManualDate=hist[j].date;break;}
   }
   // Přičteme vklady (z transakcí) po poslední ruční aktualizaci
   const si=String(i);
@@ -356,7 +379,14 @@ function getInvValue(i){
       (t.invIdx==null&&inv.ticker&&t.desc&&t.desc.includes(inv.ticker))
     ))
     .reduce((s,t)=>s+toCZK(t.amount,t.cur||'CZK'),0);
-  return baseValue+purchasesSince;
+  // Odečteme prodeje po poslední ruční aktualizaci
+  const salesSince=transactions
+    .filter(t=>t.type==='prijem'&&t.cat==='INVESTICE'&&t.date&&(!lastManualDate||t.date>lastManualDate)&&(
+      (t.invIdx!=null&&String(t.invIdx)===si)||
+      (t.invIdx==null&&inv.ticker&&t.desc&&t.desc.includes(inv.ticker))
+    ))
+    .reduce((s,t)=>s+toCZK(t.amount,t.cur||'CZK'),0);
+  return baseValue+purchasesSince-salesSince;
 }
 
 function buildBalanceHistory(){
@@ -630,6 +660,7 @@ function renderTxns(){
 
   const summaryEl=document.getElementById('period-summary');
   const summaryInner=document.getElementById('period-summary-inner');
+  const txnBilance=document.getElementById('txn-bilance-mobile-value');
   if(activePeriod!=='vse'){
     const inc=list.filter(t=>t.type==='prijem').reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
     const exp=list.filter(t=>t.type==='vydaj').reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
@@ -639,8 +670,17 @@ function renderTxns(){
       <div style="text-align:center"><div style="font-size:11px;color:var(--text-secondary);margin-bottom:3px">VÝDAJE</div><div style="font-size:16px;font-weight:600;color:var(--red)">${fmt(exp)}</div></div>
       <div style="text-align:center"><div style="font-size:11px;color:var(--text-secondary);margin-bottom:3px">BILANCE</div><div style="font-size:16px;font-weight:600;color:${net>=0?'var(--green)':'var(--red)'}">${net>=0?'+':''}${fmt(net)}</div></div>`;
     summaryEl.style.display='block';
+    // Mobile Bilance hero card
+    if(txnBilance){
+      txnBilance.textContent=(privacyMode||net<0?'':'+')+(privacyMode?fmt(Math.abs(net)):fmt(net));
+      txnBilance.style.color=privacyMode?'var(--text-secondary)':net>=0?'var(--green)':'var(--red)';
+    }
   } else {
     summaryEl.style.display='none';
+    if(txnBilance){
+      txnBilance.textContent='0 Kč';
+      txnBilance.style.color='var(--text-secondary)';
+    }
   }
 
   if(!list.length){
@@ -788,15 +828,32 @@ function openRecurringTxnModal(){
 function processRecurringTxns(){
   const td=today();
   let generated=0;
+  const MAX_ITER=365; // bezpečnostní limit proti nekonečné smyčce
+  // Deduplikační set: klíč = desc|amount|date|accIdx
+  const existing=new Set(
+    transactions.filter(t=>t.recurringGenerated).map(t=>t.desc+'|'+t.amount+'|'+t.date+'|'+t.accIdx)
+  );
   transactions.forEach(t=>{
     if(!t.recurring||!t.recurring.enabled||!t.recurring.nextDate) return;
-    while(t.recurring.nextDate<=td){
+    let iter=0;
+    while(t.recurring.nextDate<=td&&iter<MAX_ITER){
+      iter++;
       if(t.recurring.endDate&&t.recurring.nextDate>t.recurring.endDate){t.recurring.enabled=false;break;}
-      // Vytvoř kopii (normální transakce bez recurring pole)
-      const copy={desc:t.desc,tags:t.tags?[...t.tags]:[],amount:t.amount,date:t.recurring.nextDate,type:t.type,cat:t.cat,cur:t.cur,accIdx:t.accIdx,recurringGenerated:true};
-      transactions.unshift(copy);
+      const key=t.desc+'|'+t.amount+'|'+t.recurring.nextDate+'|'+t.accIdx;
+      if(!existing.has(key)){
+        // Vytvoř kopii (normální transakce bez recurring pole)
+        const copy={desc:t.desc,tags:t.tags?[...t.tags]:[],amount:t.amount,date:t.recurring.nextDate,type:t.type,cat:t.cat,cur:t.cur,accIdx:t.accIdx,recurringGenerated:true};
+        // Zachovat pole převodu pokud jde o opakující se převod
+        if(t.type==='prevod'){
+          if(t.toAccIdx!=null&&t.toAccIdx!=='') copy.toAccIdx=t.toAccIdx;
+          if(t.convertedAmount!=null) copy.convertedAmount=t.convertedAmount;
+          if(t.toCur) copy.toCur=t.toCur;
+        }
+        transactions.unshift(copy);
+        existing.add(key);
+        generated++;
+      }
       t.recurring.nextDate=advanceDate(t.recurring.nextDate, t.recurring.interval, t.recurring.dayOfMonth);
-      generated++;
     }
   });
   if(generated){
