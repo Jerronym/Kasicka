@@ -1,52 +1,18 @@
 // Kasička — globální proměnné a konstanty
 
 let transactions=[],accounts=[],investments=[],budgets=[],categories=[],invGroups=[];
-let goals=[],wishlist=[];
-let demoMode=false;
-let privacyMode=false;
-let _realDataBackup=null;
 let txnFilter='vse';
 let activeTagFilter=null;
 let currentTags=[];
-let editingTxn=-1,editingAcc=-1,editingInv=-1,editingBud=-1,editingGoal=-1,editingWish=-1;
+let editingTxn=-1,editingAcc=-1,editingInv=-1,editingBud=-1;
 let recurringMode=false;
 let balanceHistory=[],invHistory=[];
-let chartBalance=null,chartAcc=null,chartInv=null,chartCategories=null,chartTrend=null;
+let chartBalance=null,chartAcc=null,chartInv=null,chartCategories=null,chartIncome=null,chartTrend=null;
 let activePeriod='mesic', periodFrom=null, periodTo=null, periodOffset=0;
 let dashPeriod='mesic', accPeriod='mesic', invPeriod='mesic';
 
 const RATES={CZK:1,EUR:25,USD:23};
-// Ruční přepis kurzu (klíč = kód měny, hodnota = Kč za 1 jednotku) — má přednost před živým kurzem
-let rateOverrides={};
-const getRate=(cur)=>rateOverrides[cur]??RATES[cur]??1;
-const toCZK=(amount,cur)=>amount*getRate(cur);
-
-// Měny podporované Frankfurter API (všechny mají živý denní kurz do CZK) + symboly
-const CURRENCIES=[
-  {code:'CZK',symbol:'Kč'},{code:'EUR',symbol:'€'},{code:'USD',symbol:'$'},
-  {code:'GBP',symbol:'£'},{code:'CHF',symbol:'CHF'},{code:'PLN',symbol:'zł'},
-  {code:'HUF',symbol:'Ft'},{code:'NOK',symbol:'kr'},{code:'SEK',symbol:'kr'},
-  {code:'DKK',symbol:'kr'},{code:'JPY',symbol:'¥'},{code:'CAD',symbol:'C$'},
-  {code:'AUD',symbol:'A$'},{code:'NZD',symbol:'NZ$'},{code:'CNY',symbol:'¥'},
-  {code:'HKD',symbol:'HK$'},{code:'SGD',symbol:'S$'},{code:'TRY',symbol:'₺'},
-  {code:'RON',symbol:'lei'},{code:'BGN',symbol:'лв'},{code:'ISK',symbol:'kr'},
-  {code:'ILS',symbol:'₪'},{code:'INR',symbol:'₹'},{code:'KRW',symbol:'₩'},
-  {code:'MXN',symbol:'$'},{code:'BRL',symbol:'R$'},{code:'ZAR',symbol:'R'},
-  {code:'THB',symbol:'฿'},{code:'MYR',symbol:'RM'},{code:'PHP',symbol:'₱'},
-  {code:'IDR',symbol:'Rp'},
-  // Měny bez živého kurzu ve Frankfurter API — vyžadují ruční zadání kurzu k CZK
-  {code:'KGS',symbol:'сом'},
-];
-const curSymbol=(cur)=>{const c=CURRENCIES.find(x=>x.code===cur);return c?c.symbol:(cur||'');};
-function populateCurrencySelects(){
-  const ids=['acc-currency','txn-currency','st-currency','goal-currency','wish-currency'];
-  const opts=CURRENCIES.map(c=>`<option value="${c.code}">${c.code}</option>`).join('');
-  ids.forEach(id=>{const el=document.getElementById(id);if(el){const v=el.value;el.innerHTML=opts;el.value=v||'CZK';}});
-}
-// config.js se načítá až za HTML formulářů, takže selecty už v DOM existují → naplň hned.
-// DOMContentLoaded ponecháme jako pojistku, kdyby se pořadí někdy změnilo.
-populateCurrencySelects();
-document.addEventListener('DOMContentLoaded',populateCurrencySelects);
+const toCZK=(amount,cur)=>amount*(RATES[cur]||1);
 
 // Aktualizace kurzů (Frankfurter API — CORS ok, free, bez klíče)
 let _ratesFetched=false;
@@ -55,52 +21,27 @@ async function fetchLiveRates(){
   const cacheKey='fx_rates_'+today();
   const cached=localStorage.getItem(cacheKey);
   if(cached){
-    try{const r=JSON.parse(cached);Object.assign(RATES,r);eurCzkRate=RATES.EUR;_ratesFetched=true;return;}catch(e){}
+    try{const r=JSON.parse(cached);RATES.EUR=r.EUR;RATES.USD=r.USD;eurCzkRate=RATES.EUR;_ratesFetched=true;return;}catch(e){}
   }
   try{
-    const r=await fetch('https://api.frankfurter.app/latest?from=CZK',{signal:AbortSignal.timeout(6000)});
+    const r=await fetch('https://api.frankfurter.app/latest?from=CZK&to=EUR,USD',{signal:AbortSignal.timeout(6000)});
     if(!r.ok) throw new Error('HTTP '+r.status);
     const d=await r.json();
-    if(d.rates){
-      for(const c in d.rates){ if(d.rates[c]) RATES[c]=+(1/d.rates[c]).toFixed(4); }
-    }
+    if(d.rates?.EUR) RATES.EUR=+(1/d.rates.EUR).toFixed(4);
+    if(d.rates?.USD) RATES.USD=+(1/d.rates.USD).toFixed(4);
     eurCzkRate=RATES.EUR;
-    localStorage.setItem(cacheKey,JSON.stringify(RATES));
+    localStorage.setItem(cacheKey,JSON.stringify({EUR:RATES.EUR,USD:RATES.USD}));
     _ratesFetched=true;
     console.log('Kurzy aktualizovány: EUR='+RATES.EUR.toFixed(3)+', USD='+RATES.USD.toFixed(3));
   }catch(e){
     console.warn('Nepodařilo se načíst kurzy, použity fallback hodnoty.',e.message);
   }
 }
-function demoNum(n){ return n; }
 const fmt=(n,cur='CZK')=>{
-  const sym=curSymbol(cur);
-  if(privacyMode) return'••••• '+sym;
-  return n.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' '+sym;
+  if(cur==='EUR') return n.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  if(cur==='USD') return n.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' $';
+  return n.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' Kč';
 };
-function toggleDemoMode(){
-  if(!demoMode){
-    // Zapnout demo: záloha reálných dat a načtení demo profilu
-    _realDataBackup=buildExportPayload();
-    applyImport(JSON.parse(JSON.stringify(DEMO_DATA)));
-    demoMode=true;
-  } else {
-    // Vypnout demo: obnovení reálných dat
-    if(_realDataBackup) applyImport(_realDataBackup);
-    _realDataBackup=null;
-    demoMode=false;
-  }
-  localStorage.setItem('kasicka_demo',demoMode?'1':'');
-  document.documentElement.dataset.demo=demoMode?'true':'';
-  const cb1=document.getElementById('demo-toggle');
-  const cb2=document.getElementById('mobile-demo-toggle');
-  if(cb1) cb1.checked=demoMode;
-  if(cb2) cb2.checked=demoMode;
-  if(typeof initCategories==='function') initCategories();
-  if(typeof refreshCatSelect==='function') refreshCatSelect();
-  if(typeof refreshTxnFilters==='function') refreshTxnFilters();
-  markDirty();
-}
 const today=()=>new Date().toISOString().split('T')[0];
 
 // CSS proměnné pro Chart.js (neumí var() přímo)
@@ -124,12 +65,12 @@ const DEFAULT_CATS=[
   {name:'MZDA',color:'#34d399',icon:'💼'},
   {name:'OSTATNÍ',color:'#8b92a8',icon:'📦'},
 ];
-const CAT_COLORS=['#4f8ef7','#3b82f6','#0ea5e9','#06b6d4','#2dd4bf','#34d399','#22c55e','#84cc16','#fbbf24','#f97316','#fb923c','#f87171','#ef4444','#f472b6','#ec4899','#a78bfa','#8b5cf6','#6366f1','#64748b','#8b92a8'];
+const CAT_COLORS=['#4f8ef7','#34d399','#f87171','#fbbf24','#a78bfa','#2dd4bf','#f472b6','#fb923c','#8b92a8'];
 const CAT_ICONS=['🍽️','🏠','🚗','🎬','❤️','👕','💰','💼','📦','✈️','🎓','🐾','🛒','💊','🎁','🏋️','📱','🔧','🍺','☕'];
 
 let editingCat=-1, selectedCatColor=CAT_COLORS[0], selectedCatIcon=CAT_ICONS[0];
 
-let myProfile=null, friendsList=[], sharedGroupsList=[], viewingSharedGroup=null, sgTxns=[], sgMembers=[], sgTabFilter='all', sgPeriodFilter='all', sgPeriodOffset=0, sgCatFilter='vse';
+let myProfile=null, friendsList=[], sharedGroupsList=[], viewingSharedGroup=null, sgTxns=[], sgMembers=[], sgTabFilter='all', sgPeriodFilter='all', sgCatFilter='vse';
 const PROFILE_AVATARS=['👤','👩','👨','👧','👦','🧑','👵','👴','🐱','🐶','🏠','💼','🎭','⭐','🌈'];
 let selectedAvatar=PROFILE_AVATARS[0];
 
@@ -173,29 +114,25 @@ const INFLATION_CZ={
 
 let eurCzkRate=25; // fallback
 
-// Twelve Data API — klíč přesunut na server (Supabase Edge proxy)
+// Twelve Data API (free tier: 800 req/den, 8/min)
+const TWELVE_DATA_KEY='7391472785a349ad98520bc0efdec7b7';
 
 // ── Supabase ───────────────────────────────────────────────
 const SUPA_URL='https://bjjpaympgilbkzmhmdcy.supabase.co';
 const SUPA_KEY='sb_publishable_yJSg_MYaAnCOcryppSYP1A_UAkXxQOX';
-const supa=supabase.createClient(SUPA_URL, SUPA_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    // Mobilní/PWA prohlížeče zmrazují kontexty a drží navigator.locks zámek
-    // donekonečna → dotazy pak visí. No-op zámek to obchází (single-user app).
-    lock: async (_name, _acquireTimeout, fn) => await fn(),
-  },
-});
+const supa=supabase.createClient(SUPA_URL, SUPA_KEY);
 
 let currentUser=null;
 let authMode='login';
 let saveTimer=null;
+// Verze (updated_at) cloudových dat, se kterou je tato karta synchronní.
+// Slouží k detekci, že data změnilo jiné zařízení (auto-sync v auth.js).
+let cloudUpdatedAt=null;
 
 // ── Dirty-flag systém pro výkon ─────────────────────────
 // Místo kaskády renderTxns();renderAccounts();renderDashboard();renderInvestments();
 // se označí co je "dirty" a renderuje se jen viditelná sekce.
-const _dirty={dashboard:false,transactions:false,accounts:false,investments:false,budget:false,categories:false,links:false,'links-group':false,goals:false};
+const _dirty={dashboard:false,transactions:false,accounts:false,investments:false,budget:false,categories:false,links:false};
 let _activeSection='dashboard';
 let _renderRAF=null;
 
@@ -222,85 +159,4 @@ function _renderVisible(){
   else if(s==='budget') renderBudget();
   else if(s==='categories' && typeof renderCategories==='function') renderCategories();
   else if(s==='links' && typeof renderLinks==='function') renderLinks();
-  else if(s==='links-group' && typeof renderSharedGroupDetail==='function') renderSharedGroupDetail();
-  else if(s==='goals' && typeof renderGoalsSection==='function') renderGoalsSection();
-}
-
-// ── Sdílený výpočet rozpočtu (budget.js + dashboard.js) ────
-function calcBudgetSpent(b, range){
-  const matchTxn=t=>{
-    if(b.trackMode==='tags'){
-      const tags=b.trackTags&&b.trackTags.length?b.trackTags:[];
-      if(!tags.length) return false;
-      const txnTags=Array.isArray(t.tags)?t.tags:(t.tag?[t.tag]:[]);
-      return tags.some(tag=>txnTags.includes(tag));
-    } else {
-      const cats=b.cats&&b.cats.length?b.cats:[b.name];
-      return cats.includes(t.cat);
-    }
-  };
-  // Efektivní meze = průnik předaného range a vlastního okna kumulativního rozpočtu
-  let lo=range?range.from:null;
-  let hi=range?range.to:null;
-  if(b.budType==='cumulative'){
-    if(b.startDate){const s=new Date(b.startDate+'T00:00:00');if(!lo||s>lo) lo=s;}
-    if(b.endDate)  {const e=new Date(b.endDate  +'T23:59:59');if(!hi||e<hi) hi=e;}
-  }
-  const net=b.flowMode==='net';
-  const list=transactions.filter(t=>{
-    if(!matchTxn(t)) return false;
-    if(t.type==='prevod') return false;
-    if(!net&&t.type!=='vydaj') return false;
-    if(lo||hi){const d=new Date(t.date+'T12:00:00');if(lo&&d<lo) return false;if(hi&&d>hi) return false;}
-    return true;
-  });
-  const out=list.filter(t=>t.type==='vydaj').reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
-  if(!net) return out;
-  const inc=list.filter(t=>t.type==='prijem').reduce((s,t)=>s+toCZK(t.amount,t.cur),0);
-  return out-inc;
-}
-
-// Vrátí false když kumulativní rozpočet s nastaveným oknem leží zcela mimo daný range (pro Přehled)
-function budgetVisibleInRange(b, range){
-  if(b.budType!=='cumulative'||!range) return true;
-  if(b.startDate&&new Date(b.startDate+'T00:00:00')>range.to)   return false;
-  if(b.endDate  &&new Date(b.endDate  +'T23:59:59')<range.from) return false;
-  return true;
-}
-
-// ── Škálování limitu rozpočtu podle filtrovaného období ───
-// Počet nativních period, které „uplynuly" v rozsahu range až do dneška.
-// Aktuální (rozjetá) perioda se počítá celá → v červnu při ročním filtru = 6 měsíců.
-function elapsedPeriodCount(period, range){
-  const now=new Date(); now.setHours(0,0,0,0);
-  const from=new Date(range.from);
-  const effEnd=range.to<now?new Date(range.to):now;
-  if(effEnd<from) return 0;
-  if(period==='week') return Math.max(1,Math.ceil(((effEnd-from)/864e5+1)/7));
-  if(period==='year') return effEnd.getFullYear()-from.getFullYear()+1;
-  return(effEnd.getFullYear()*12+effEnd.getMonth())-(from.getFullYear()*12+from.getMonth())+1;
-}
-// Cíl naškálovaný na filtrovaný rozsah (jen periodické; kumulativní vrátí b.limit).
-function scaledBudgetLimit(b, range){
-  if(b.budType==='cumulative'||!range) return b.limit;
-  return b.limit*elapsedPeriodCount(b.period||'month',range);
-}
-
-// ── Loading indikátor ──────────────────────────────────────
-function showLoading(msg){
-  msg=msg||'Načítání...';
-  let el=document.getElementById('global-loading');
-  if(!el){
-    el=document.createElement('div');
-    el.id='global-loading';
-    el.style.cssText='position:fixed;inset:0;background:var(--scrim);display:flex;align-items:center;justify-content:center;z-index:300;';
-    el.innerHTML='<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:24px 36px;text-align:center;"><div class="loading-spinner"></div><div style="margin-top:12px;font-size:13px;color:var(--text-secondary)"></div></div>';
-    document.body.appendChild(el);
-  }
-  el.querySelector('div > div:last-child').textContent=msg;
-  el.style.display='flex';
-}
-function hideLoading(){
-  const el=document.getElementById('global-loading');
-  if(el) el.style.display='none';
 }

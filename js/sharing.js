@@ -3,8 +3,9 @@
 // ── Načtení sdílených dat ──────────────────────────────────
 async function loadSharedData(){
   if(!currentUser) return;
-  await Promise.all([loadMyProfile(), loadFriends(), loadSharedGroups()]);
-  renderSidebarGroups();
+  await loadMyProfile();
+  await loadFriends();
+  await loadSharedGroups();
 }
 
 async function loadMyProfile(){
@@ -176,13 +177,12 @@ async function saveSharedGroup(){
   const selectedFriends=[...document.querySelectorAll('#cg-friends-picker input:checked')].map(cb=>cb.value);
 
   if(_editingGroupId){
-    // Editace existující skupiny — ověření vlastnictví
-    const g=sharedGroupsList.find(gr=>gr.id===_editingGroupId);
-    if(g&&g.created_by!==currentUser?.id){toast('Nemáš oprávnění upravit tuto skupinu.','warn');return;}
+    // Editace existující skupiny
     const {error}=await supa.from('shared_groups').update({name}).eq('id',_editingGroupId);
     if(error){toast('Chyba při úpravě skupiny: '+error.message,'error');return;}
 
     // Synchronizace členů — zjisti rozdíl
+    const g=sharedGroupsList.find(gr=>gr.id===_editingGroupId);
     const currentMembers=(g?.memberIds||[]).filter(uid=>uid!==currentUser.id);
     const toAdd=selectedFriends.filter(uid=>!currentMembers.includes(uid));
     const toRemove=currentMembers.filter(uid=>!selectedFriends.includes(uid));
@@ -210,20 +210,16 @@ async function saveSharedGroup(){
   _editingGroupId=null;
   closeModal('creategroup');
   await loadSharedGroups();
-  renderSidebarGroups();
   renderLinks();
 }
 
 async function deleteSharedGroup(groupId){
-  const g=sharedGroupsList.find(gr=>gr.id===groupId);
-  if(g&&g.created_by!==currentUser?.id){toast('Nemáš oprávnění smazat tuto skupinu.','warn');return;}
   if(!confirm('Opravdu smazat tuto skupinu? Všechny sdílené transakce budou smazány.')) return;
   await supa.from('shared_groups').delete().eq('id',groupId);
   viewingSharedGroup=null;
   toast('Skupina smazána','info');
   await loadSharedGroups();
-  renderSidebarGroups();
-  showSection('links');
+  renderLinks();
 }
 
 async function leaveSharedGroup(groupId){
@@ -232,20 +228,17 @@ async function leaveSharedGroup(groupId){
   viewingSharedGroup=null;
   toast('Opustil jsi skupinu','info');
   await loadSharedGroups();
-  renderSidebarGroups();
-  showSection('links');
+  renderLinks();
 }
 
 // ── Detail sdílené skupiny ─────────────────────────────────
-async function openSharedGroupPage(groupId){
+async function openSharedGroupDetail(groupId){
   viewingSharedGroup=groupId;
   sgTabFilter='all';
   sgPeriodFilter='all';
-  sgPeriodOffset=0;
   sgCatFilter='vse';
-  showLoading('Načítání skupiny...');
-  try{await loadSharedGroupDetail();}finally{hideLoading();}
-  showSection('links-group');
+  await loadSharedGroupDetail();
+  renderLinks();
 }
 
 async function loadSharedGroupDetail(){
@@ -263,7 +256,7 @@ async function loadSharedGroupDetail(){
 
 function closeSharedGroupDetail(){
   viewingSharedGroup=null;
-  showSection('links');
+  renderLinks();
 }
 
 function switchSgTab(userId,ev){
@@ -275,7 +268,7 @@ function switchSgTab(userId,ev){
 
 // ── Filtry detailu skupiny ─────────────────────────────────
 function getSgDateRange(){
-  const now=new Date(); now.setHours(0,0,0,0);
+  const now=new Date();
   if(sgPeriodFilter==='all') return null;
   if(sgPeriodFilter==='vlastni'){
     const f=document.getElementById('sg-from')?.value;
@@ -283,57 +276,19 @@ function getSgDateRange(){
     if(!f||!t) return null;
     return {from:new Date(f+'T00:00:00'),to:new Date(t+'T23:59:59')};
   }
-  if(sgPeriodFilter==='tyden'){
-    const mon=new Date(now);
-    mon.setDate(mon.getDate()-(mon.getDay()||7)+1+sgPeriodOffset*7);
-    mon.setHours(0,0,0,0);
-    const sun=new Date(mon);sun.setDate(sun.getDate()+6);sun.setHours(23,59,59,999);
-    return {from:mon,to:sun};
-  }
-  if(sgPeriodFilter==='mesic'){
-    const f=new Date(now.getFullYear(),now.getMonth()+sgPeriodOffset,1);
-    const t=new Date(now.getFullYear(),now.getMonth()+sgPeriodOffset+1,0);t.setHours(23,59,59,999);
-    return {from:f,to:t};
-  }
-  if(sgPeriodFilter==='rok'){
-    const y=now.getFullYear()+sgPeriodOffset;
-    return {from:new Date(y,0,1),to:new Date(y,11,31,23,59,59,999)};
-  }
-  return null;
-}
-function updateSgNavLabel(){
-  const el=document.getElementById('sg-period-nav-label');
-  if(!el) return;
-  const now=new Date();
-  if(sgPeriodFilter==='tyden'){
-    const base=new Date(now);
-    base.setDate(base.getDate()-(base.getDay()||7)+1+sgPeriodOffset*7);
-    const end=new Date(base);end.setDate(end.getDate()+6);
-    el.textContent=base.toLocaleDateString('cs-CZ',{day:'2-digit',month:'short'})+' – '+end.toLocaleDateString('cs-CZ',{day:'2-digit',month:'short',year:'numeric'});
-  } else if(sgPeriodFilter==='mesic'){
-    const d=new Date(now.getFullYear(),now.getMonth()+sgPeriodOffset,1);
-    el.textContent=d.toLocaleDateString('cs-CZ',{month:'long',year:'numeric'});
-  } else if(sgPeriodFilter==='rok'){
-    el.textContent=String(now.getFullYear()+sgPeriodOffset);
-  } else {
-    el.textContent='';
-  }
-}
-function shiftSgPeriod(dir){
-  sgPeriodOffset+=dir;
-  updateSgNavLabel();
-  renderSharedGroupDetail();
+  const from=new Date(now);
+  if(sgPeriodFilter==='tyden'){const day=(now.getDay()||7);from.setDate(now.getDate()-day+1);from.setHours(0,0,0,0);}
+  else if(sgPeriodFilter==='mesic'){from.setDate(1);from.setHours(0,0,0,0);}
+  else if(sgPeriodFilter==='rok'){from.setMonth(0,1);from.setHours(0,0,0,0);}
+  const to=new Date(now);to.setHours(23,59,59,999);
+  return {from,to};
 }
 function setSgPeriod(p,btn){
   sgPeriodFilter=p;
-  sgPeriodOffset=0;
   document.querySelectorAll('#sg-p-all,#sg-p-week,#sg-p-month,#sg-p-year,#sg-p-custom').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
   const wrap=document.getElementById('sg-custom-wrap');
   if(wrap) wrap.style.display=p==='vlastni'?'flex':'none';
-  const nav=document.getElementById('sg-period-nav');
-  if(nav) nav.style.display=(p==='all'||p==='vlastni')?'none':'flex';
-  updateSgNavLabel();
   renderSharedGroupDetail();
 }
 function setSgCatFilter(val){
@@ -420,8 +375,6 @@ async function saveSharedTxn(){
   if(!viewingSharedGroup||!currentUser) return;
 
   if(_editingSharedTxnId){
-    const existing=sgTxns.find(t=>t.id===_editingSharedTxnId);
-    if(existing&&existing.user_id!==currentUser?.id){toast('Můžeš upravit jen své výdaje.','warn');return;}
     const {error}=await supa.from('shared_transactions').update({
       amount, currency, category:category||'Ostatní', description, date
     }).eq('id',_editingSharedTxnId);
@@ -443,9 +396,6 @@ async function saveSharedTxn(){
 }
 
 async function deleteSharedTxn(txnId){
-  const t=sgTxns.find(tx=>tx.id===txnId);
-  const g=sharedGroupsList.find(gr=>gr.id===viewingSharedGroup);
-  if(t&&t.user_id!==currentUser?.id&&g?.created_by!==currentUser?.id){toast('Nemáš oprávnění smazat tento výdaj.','warn');return;}
   if(!confirm('Opravdu smazat tento sdílený výdaj?')) return;
   await supa.from('shared_transactions').delete().eq('id',txnId);
   await loadSharedGroupDetail();
@@ -522,10 +472,19 @@ function renderLinks(){
 
   // Sdílené skupiny
   const groupsEl=document.getElementById('shared-groups-list');
+  const detailEl=document.getElementById('shared-group-detail');
+  if(viewingSharedGroup){
+    groupsEl.parentElement.style.display='none';
+    detailEl.style.display='block';
+    renderSharedGroupDetail();
+    return;
+  }
+  groupsEl.parentElement.style.display='block';
+  detailEl.style.display='none';
   groupsEl.innerHTML=sharedGroupsList.length
     ?sharedGroupsList.map(g=>{
       const isOwner=g.created_by===currentUser?.id;
-      return`<div class="card" style="padding:14px 16px;margin-bottom:8px;cursor:pointer;" onclick="openSharedGroupPage('${g.id}')">
+      return`<div class="card" style="padding:14px 16px;margin-bottom:8px;cursor:pointer;" onclick="openSharedGroupDetail('${g.id}')">
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <div>
             <div style="font-size:14px;font-weight:600;">${escHtml(g.name)}</div>

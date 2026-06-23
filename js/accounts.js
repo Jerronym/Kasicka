@@ -2,7 +2,6 @@
 
 function openAccModal(idx){
   editingAcc=idx;
-  if(document.getElementById('acc-currency').options.length<=1) populateCurrencySelects();
   const del=document.getElementById('acc-delete-btn');
   const setToggle=(val)=>{
     const cb=document.getElementById('acc-include');
@@ -15,7 +14,7 @@ function openAccModal(idx){
     document.getElementById('acc-balance').value='';
     document.getElementById('acc-currency').value='CZK';
     document.getElementById('acc-type').value='bank';
-    document.getElementById('acc-start-date').value=today();
+    document.getElementById('acc-start-date').value='';
     setToggle(true);
     del.style.display='none';
   } else {
@@ -29,20 +28,7 @@ function openAccModal(idx){
     setToggle(a.includeInTotal!==false);
     del.style.display='block';
   }
-  onAccCurrencyChange();
   openModal('acc');
-}
-
-// Zobrazit/skrýt pole pro kurz a předvyplnit efektivní kurz dle zvolené měny
-function onAccCurrencyChange(){
-  const cur=document.getElementById('acc-currency').value;
-  const group=document.getElementById('acc-rate-group');
-  if(cur==='CZK'){ group.style.display='none'; return; }
-  group.style.display='';
-  document.getElementById('acc-rate-label').textContent='Kurz: 1 '+cur+' = ? Kč';
-  // U měny bez živého kurzu nech pole prázdné (ať uživatel zadá vlastní), jinak předvyplň efektivní kurz
-  const known=(rateOverrides[cur]!=null)||(RATES[cur]!=null);
-  document.getElementById('acc-rate').value=known?getRate(cur):'';
 }
 
 function saveAcc(){
@@ -54,16 +40,8 @@ function saveAcc(){
   const includeInTotal=document.getElementById('acc-include').checked;
   const startDate=document.getElementById('acc-start-date').value||'';
   if(!name){toast('Zadej název účtu.','warn');return;}
-  if(!startDate){toast('Zadej datum počátečního zůstatku.','warn');return;}
   if(rawBalance!==''&&isNaN(desiredBalance)){toast('Zadej platný zůstatek.','warn');return;}
   const balance=isNaN(desiredBalance)?0:desiredBalance;
-  // Ruční kurz: pokud se liší od živého, ulož override; jinak ho zruš
-  if(currency!=='CZK'){
-    const rawRate=document.getElementById('acc-rate').value;
-    const rate=parseFloat(rawRate);
-    if(rawRate!==''&&!isNaN(rate)&&rate>0&&rate!==RATES[currency]) rateOverrides[currency]=rate;
-    else delete rateOverrides[currency];
-  }
   if(editingAcc===-1){
     const acc={name,initialBalance:balance,currency,type,includeInTotal,startDate};
     accounts.push(acc);
@@ -84,14 +62,12 @@ function deleteAcc(){
   transactions.forEach(t=>{
     if(t.accIdx!==undefined&&t.accIdx!==''){
       const ai=parseInt(t.accIdx);
-      if(isNaN(ai)) t.accIdx='';
-      else if(ai===delIdx) t.accIdx='';
+      if(ai===delIdx) t.accIdx='';
       else if(ai>delIdx) t.accIdx=String(ai-1);
     }
     if(t.toAccIdx!=null&&t.toAccIdx!==''){
       const ti=parseInt(t.toAccIdx);
-      if(isNaN(ti)) t.toAccIdx='';
-      else if(ti===delIdx) t.toAccIdx='';
+      if(ti===delIdx) t.toAccIdx=null;
       else if(ti>delIdx) t.toAccIdx=String(ti-1);
     }
   });
@@ -149,7 +125,7 @@ function renderAccounts(){
   list.innerHTML=accounts.map((a,i)=>{
     const excluded=a.includeInTotal===false;
     const bal=getBalance(i);
-    const col=bal>=0?(excluded?'var(--text-secondary)':'var(--green)'):'var(--red)';
+    const col=bal>=0?(excluded?'var(--text-secondary)':'var(--accent)'):'var(--red)';
     return`<div class="account-card" draggable="true" data-acc-idx="${i}"
       ondragstart="accDragStart(event,${i})"
       ondragover="accDragOver(event)"
@@ -239,5 +215,5 @@ function renderAccChart(){
     history=filterHistoryByPeriod(history, accPeriod, Math.round(currentVal*100)/100, 'acc');
   }
 
-  chartAcc=new Chart(ctx,{type:'line',data:{labels:history.map(h=>h.label),datasets:[{label:'Zůstatky (Kč)',data:history.map(h=>h.value),borderColor:cssVar('--accent'),backgroundColor:cssVarAlpha('--accent',0.1),borderWidth:2,pointRadius:0,pointHoverRadius:4,pointBackgroundColor:cssVar('--accent'),fill:true,tension:0.35}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>fmt(demoNum(v.raw))}}},scales:{x:{ticks:{color:cssVar('--text-secondary'),font:{size:11},maxRotation:45,autoSkip:true},grid:{color:cssVar('--border-subtle')}},y:{ticks:{color:cssVar('--text-secondary'),font:{size:11},callback:v=>privacyMode?'•••':demoNum(v).toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})},grid:{color:cssVar('--border-subtle')}}}}});
+  chartAcc=new Chart(ctx,{type:'line',data:{labels:history.map(h=>h.label),datasets:[{label:'Zůstatky (Kč)',data:history.map(h=>h.value),borderColor:cssVar('--accent'),backgroundColor:cssVarAlpha('--accent',0.1),borderWidth:2,pointRadius:0,pointHoverRadius:4,pointBackgroundColor:cssVar('--accent'),fill:true,tension:0.35}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:v=>v.raw.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})+' Kč'}}},scales:{x:{ticks:{color:cssVar('--text-secondary'),font:{size:11},maxRotation:45,autoSkip:true},grid:{color:cssVar('--border-subtle')}},y:{ticks:{color:cssVar('--text-secondary'),font:{size:11},callback:v=>v.toLocaleString('cs-CZ',{minimumFractionDigits:2,maximumFractionDigits:2})},grid:{color:cssVar('--border-subtle')}}}}});
 }
