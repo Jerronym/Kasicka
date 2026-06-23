@@ -81,28 +81,34 @@ async function loadFromCloud(){
   await loadSharedData();
 }
 
+let _cloudSaving=false; // true během ukládání do cloudu — brání souběžné auto-obnově
 async function saveToCloud(){
   if(!currentUser) return;
-  // Pojistka proti přepsání: změnilo data od našeho načtení jiné zařízení?
+  _cloudSaving=true;
   try{
-    const {data:cur}=await supa.from('user_data').select('updated_at').eq('user_id',currentUser.id).single();
-    if(cur?.updated_at && cloudUpdatedAt && cur.updated_at!==cloudUpdatedAt){
-      const overwrite=confirm('Data byla mezitím změněna na jiném zařízení.\n\nOK = přepsat je tvými aktuálními daty z tohoto zařízení.\nZrušit = zahodit zdejší změny a načíst novější data z druhého zařízení.');
-      if(!overwrite){
-        await reloadFromCloud();
-        return;
+    // Pojistka proti přepsání: změnilo data od našeho načtení jiné zařízení?
+    try{
+      const {data:cur}=await supa.from('user_data').select('updated_at').eq('user_id',currentUser.id).single();
+      if(cur?.updated_at && cloudUpdatedAt && cur.updated_at!==cloudUpdatedAt){
+        const overwrite=confirm('Data byla mezitím změněna na jiném zařízení.\n\nOK = přepsat je tvými aktuálními daty z tohoto zařízení.\nZrušit = zahodit zdejší změny a načíst novější data z druhého zařízení.');
+        if(!overwrite){
+          await reloadFromCloud();
+          return;
+        }
       }
-    }
-  }catch(e){/* offline / nová tabulka — pokračuj normálním uložením */}
-  const payload=buildExportPayload();
-  const now=new Date().toISOString();
-  // Upsert — vytvoří nebo aktualizuje
-  const {error}=await supa.from('user_data').upsert({
-    user_id:currentUser.id,
-    data:payload,
-    updated_at:now
-  },{onConflict:'user_id'});
-  if(!error) cloudUpdatedAt=now; // teď jsme synchronní s touto verzí
+    }catch(e){/* offline / nová tabulka — pokračuj normálním uložením */}
+    const payload=buildExportPayload();
+    const now=new Date().toISOString();
+    // Upsert — vytvoří nebo aktualizuje
+    const {error}=await supa.from('user_data').upsert({
+      user_id:currentUser.id,
+      data:payload,
+      updated_at:now
+    },{onConflict:'user_id'});
+    if(!error) cloudUpdatedAt=now; // teď jsme synchronní s touto verzí
+  } finally {
+    _cloudSaving=false;
+  }
 }
 
 // Stáhne aktuální data z cloudu do otevřené karty (auto-sync mezi zařízeními).
@@ -129,7 +135,7 @@ async function reloadFromCloud(){
 // Hlídá, aby uživatele nevyrušil uprostřed editace ani nezahodil neuložené změny.
 async function checkCloudFreshness(){
   if(!currentUser||document.hidden) return;
-  if(saveTimer) return;                              // máme lokální neuložené změny
+  if(saveTimer||_cloudSaving) return;                // naplánované nebo probíhající ukládání lokálních změn
   if(document.querySelector('[id^="modal-"].open')) return; // uživatel právě edituje
   try{
     const {data,error}=await supa.from('user_data').select('updated_at').eq('user_id',currentUser.id).single();
@@ -177,6 +183,7 @@ saveToStorage=function(){
   // Uložit do cloudu (debounce 2s)
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
+    saveTimer=null; // časovač doběhl — od teď není naplánováno uložení (důležité pro checkCloudFreshness)
     if(currentUser){
       await saveToCloud();
       const ind=document.getElementById('save-indicator');
