@@ -30,17 +30,23 @@ function renderGoalsSection() {
 
 function calcAvgMonthlySaving(linkedAccIdx) {
   if (linkedAccIdx === '' || linkedAccIdx === undefined || linkedAccIdx === null) return null;
-  const accIdx = String(linkedAccIdx);
+  const accIdx = parseInt(linkedAccIdx);
+  const acc = accounts[accIdx];
+  if (!acc) return null;
   const now = new Date();
   const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+  // Čistá změna zůstatku účtu (příjmy + převody dovnitř − výdaje − převody ven),
+  // ne jen hrubý příliv. txnImpact vrací dopad transakce na účet v jeho měně.
   const relevant = transactions.filter(t =>
-    t.type === 'prevod' &&
-    String(t.toAccIdx) === accIdx &&
-    new Date(t.date + 'T12:00:00') >= threeMonthsAgo
+    t.date &&
+    new Date(t.date + 'T12:00:00') >= threeMonthsAgo &&
+    txnImpact(t, accIdx) !== 0
   );
   if (!relevant.length) return null;
-  const total = relevant.reduce((s, t) => s + toCZK(t.amount, t.cur || 'CZK'), 0);
-  return total / 3;
+  const netNative = relevant.reduce((s, t) => s + txnImpact(t, accIdx), 0);
+  const netCZK = toCZK(netNative, acc.currency || 'CZK');
+  if (netCZK <= 0) return null; // účet čistě neroste → nelze odhadnout dobu
+  return netCZK / 3;
 }
 
 function renderGoals() {
