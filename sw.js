@@ -1,7 +1,7 @@
 // Kasička — service worker (PWA offline shell)
 // POZOR: při každém deployi změň CACHE verzi (např. v2, v3 …), jinak prohlížeč
 // servíruje starou cache se starým kódem. Bez bundleru není automatický hash.
-const CACHE = 'kasicka-v2';
+const CACHE = 'kasicka-v3';
 
 // App shell — předcache při instalaci. Cesty relativní ke scope (root).
 const SHELL = [
